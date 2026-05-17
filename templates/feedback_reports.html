@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Reports</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="#" onclick="history.back(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}" class="active">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="feedback-dashboard-wrap">
+    <div class="feedback-dashboard-hero">
+        <h1 class="feedback-dashboard-title">Feedback Reports</h1>
+        <p class="feedback-dashboard-subtitle">Review student ratings and submitted comments.</p>
+    </div>
+
+    <div class="feedback-overview-grid">
+
+        <!-- OVERALL RATING -->
+        <div class="feedback-overview-card score-card">
+            <div class="feedback-overview-header">
+                <h2>Overall Rating</h2>
+            </div>
+
+            <div class="overall-rating-value">{{ overall_rating }}</div>
+
+            <div class="overall-stars">
+                {% set full_stars = overall_rating|int %}
+                {% set decimal = overall_rating - full_stars %}
+                {% set has_half = 1 if decimal >= 0.5 else 0 %}
+                {% set empty_stars = 5 - full_stars - has_half %}
+
+                {% for i in range(full_stars) %}
+                    <span class="star filled">★</span>
+                {% endfor %}
+
+                {% if has_half %}
+                    <span class="star half">★</span>
+                {% endif %}
+
+                {% for i in range(empty_stars) %}
+                    <span class="star">★</span>
+                {% endfor %}
+            </div>
+
+            <div class="overall-rating-note">
+                Based on {{ total_feedbacks }} review(s)
+            </div>
+        </div>
+
+        <!-- RATING BREAKDOWN -->
+        <div class="feedback-overview-card breakdown-card">
+            <div class="feedback-overview-header">
+                <h2>Rating Breakdown</h2>
+            </div>
+
+            {% for rating in [5, 4, 3, 2, 1] %}
+                {% set count = rating_counts[rating] %}
+                {% if total_feedbacks > 0 %}
+                    {% set width_percent = (count / total_feedbacks * 100) %}
+                {% else %}
+                    {% set width_percent = 0 %}
+                {% endif %}
+
+                <div class="rating-row">
+                    <div class="rating-label">{{ rating }} Star</div>
+                    <div class="rating-bar-track">
+                        <div class="rating-bar-fill" style="width: {{ width_percent }}%;"></div>
+                    </div>
+                    <div class="rating-count">{{ count }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- QUICK STATS -->
+        <div class="feedback-overview-card quick-stats-card">
+            <div class="feedback-overview-header">
+                <h2>Quick Stats</h2>
+            </div>
+
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon qs-purple">💬</div>
+                <div class="quick-stat-text">
+                    <div class="quick-stat-value">{{ total_feedbacks }}</div>
+                    <div class="quick-stat-label">Total Reviews</div>
+                </div>
+            </div>
+
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon qs-gold">⭐</div>
+                <div class="quick-stat-text">
+                    <div class="quick-stat-value">{{ overall_rating }} / 5</div>
+                    <div class="quick-stat-label">Average Score</div>
+                </div>
+            </div>
+
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon qs-green">📈</div>
+                <div class="quick-stat-text">
+                    {% if total_feedbacks > 0 %}
+                        {% set high_rated = (rating_counts[4] + rating_counts[5]) %}
+                        {% set high_percent = ((high_rated / total_feedbacks) * 100)|round|int %}
+                    {% else %}
+                        {% set high_percent = 0 %}
+                    {% endif %}
+                    <div class="quick-stat-value">{{ high_percent }}%</div>
+                    <div class="quick-stat-label">Rated 4 Stars or Above</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FEEDBACK CARDS LIST -->
+    <div class="feedback-list-panel">
+        <div class="feedback-list-toolbar">
+            <div class="feedback-list-left">
+                <span class="feedback-total-text">
+                    Total Feedback: <strong>{{ total_feedbacks }}</strong>
+                </span>
+            </div>
+
+            <div class="feedback-list-right">
+                <label for="feedbackSearch" class="toolbar-label">Search</label>
+                <input
+                    type="text"
+                    id="feedbackSearch"
+                    class="toolbar-search"
+                    placeholder="Search student, purpose, lab, rating..."
+                >
+            </div>
+        </div>
+
+        <div class="feedback-cards-list" id="feedbackCardsList">
+            {% for item in feedbacks %}
+            <div
+                class="student-feedback-card"
+                data-name="{{ item.sitin_record.student_name|lower }}"
+                data-id="{{ item.sitin_record.student_id_number|lower }}"
+                data-purpose="{{ item.sitin_record.purpose|lower }}"
+                data-lab="{{ item.sitin_record.sit_lab|string|lower }}"
+                data-rating="{{ item.rating }}"
+            >
+                <div class="student-feedback-top">
+                    <div class="student-feedback-profile">
+                        {% if item.student.profile_pic and item.student.profile_pic != 'default.png' %}
+                            <img
+                                src="{{ url_for('static', filename='uploads/' + item.student.profile_pic) }}"
+                                alt="Profile"
+                                class="student-avatar-image"
+                            >
+                        {% else %}
+                            <div class="student-avatar-circle">
+                                {{ item.sitin_record.student_name[:1] }}
+                            </div>
+                        {% endif %}
+                        <div class="student-feedback-meta">
+                            <h3 class="student-feedback-name">{{ item.sitin_record.student_name }}</h3>
+                            <p class="student-feedback-id">ID: {{ item.sitin_record.student_id_number }}</p>
+                        </div>
+                    </div>
+
+                    <div class="student-feedback-date">
+                        {{ item.created_at }}
+                    </div>
+                </div>
+
+                <div class="student-feedback-middle">
+                    <div class="student-stars">
+                        {% for i in range(1, 6) %}
+                            {% if i <= item.rating %}
+                                <span class="star filled">★</span>
+                            {% else %}
+                                <span class="star">★</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="student-rating-text">{{ item.rating }}/5</div>
+                </div>
+
+                <div class="student-feedback-tags">
+                    <div class="student-tag">
+                        <span class="tag-label">Purpose</span>
+                        <span class="tag-value">{{ item.sitin_record.purpose }}</span>
+                    </div>
+
+                    <div class="student-tag">
+                        <span class="tag-label">Lab</span>
+                        <span class="tag-value">{{ item.sitin_record.sit_lab }}</span>
+                    </div>
+                </div>
+
+                <div class="student-feedback-message">
+                    {{ item.feedback_text }}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-records-state">
+                No feedback submitted yet.
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="records-footer">
+            <span id="feedbackCountText">Showing {{ total_feedbacks }} feedback record(s)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+const feedbackSearch = document.getElementById('feedbackSearch');
+const feedbackCardsList = document.getElementById('feedbackCardsList');
+const feedbackCountText = document.getElementById('feedbackCountText');
+
+function updateFeedbackCards() {
+    const keyword = feedbackSearch.value.toLowerCase().trim();
+    const cards = Array.from(feedbackCardsList.querySelectorAll('.student-feedback-card'));
+    let visible = 0;
+
+    cards.forEach(card => {
+        const searchableText = [
+            card.dataset.name || '',
+            card.dataset.id || '',
+            card.dataset.purpose || '',
+            card.dataset.lab || '',
+            card.dataset.rating || ''
+        ].join(' ');
+
+        const isMatch = searchableText.includes(keyword);
+
+        if (isMatch) {
+            card.style.display = '';
+            card.classList.remove('fade-out');
+            card.classList.add('fade-in');
+            visible++;
+            setTimeout(() => card.classList.remove('fade-in'), 280);
+        } else {
+            card.classList.add('fade-out');
+            setTimeout(() => {
+                if (card.classList.contains('fade-out')) card.style.display = 'none';
+            }, 280);
+        }
+    });
+
+    feedbackCountText.textContent = `Showing ${visible} feedback record(s)`;
+}
+
+feedbackSearch.addEventListener('input', updateFeedbackCards);
+updateFeedbackCards();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Sit-in Records</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="{{ url_for('admin_dashboard') }}">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}" class="active">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-wrapper">
+    {% for category, message in messages %}
+    <div class="flash-alert flash-{{ category }}" id="flashAlert">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+setTimeout(() => {
+    const alertBox = document.getElementById('flashAlert');
+    if (alertBox) alertBox.classList.add('hide');
+}, 2000);
+
+setTimeout(() => {
+    const alertBox = document.getElementById('flashAlert');
+    if (alertBox) alertBox.remove();
+}, 2500);
+</script>
+{% endif %}
+{% endwith %}
+
+<div class="admin-wrapper">
+    <div class="records-shell">
+
+        <div class="records-hero">
+            <h1 class="records-title">View Sit-in Records</h1>
+            <p class="records-subtitle">Monitor all active and logged out sit-in history in one place.</p>
+        </div>
+
+        <div class="records-panel">
+            <div class="records-toolbar">
+                <div class="records-toolbar-left">
+                    <label for="entriesSelect" class="toolbar-label">Show</label>
+                    <select id="entriesSelect" class="toolbar-select">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="toolbar-text">entries</span>
+                </div>
+
+                <div class="records-toolbar-right">
+                    <label for="recordsSearch" class="toolbar-label">Search</label>
+                    <input type="text" id="recordsSearch" class="toolbar-search" placeholder="Search records...">
+                </div>
+            </div>
+
+            <div class="admin-table-wrap records-table-wrap">
+                <table class="admin-table records-table" id="viewRecordsTable">
+                    <thead>
+                        <tr>
+                            <th>Sit ID Number</th>
+                            <th>ID Number</th>
+                            <th>Name</th>
+                            <th>Purpose</th>
+                            <th>Sit Lab</th>
+                            <th>Session</th>
+                            <th>Status</th>
+                            <th>Login Time</th>
+                            <th>Logout Time</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for record in sitin_records %}
+                        <tr>
+                            <td>{{ record.id }}</td>
+                            <td>{{ record.student_id_number }}</td>
+                            <td class="student-name-cell">{{ record.student_name }}</td>
+                            <td>{{ record.purpose }}</td>
+                            <td>{{ record.sit_lab }}</td>
+                            <td>
+                                <span class="session-pill">{{ record.session }}</span>
+                            </td>
+                            <td>
+                                {% if record.status == 'Logged Out' %}
+                                    <span class="status-logout">Logged Out</span>
+                                {% else %}
+                                    <span class="status-active">Active</span>
+                                {% endif %}
+                            </td>
+                            <td class="time-cell">{{ record.login_time if record.login_time else '-' }}</td>
+                            <td class="time-cell">{{ record.logout_time if record.logout_time else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9">
+                                <div class="empty-records-state">No records available</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="records-footer">
+                <span id="recordsCountText">Showing {{ sitin_records|length }} record(s)</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const recordsSearch = document.getElementById('recordsSearch');
+const entriesSelect = document.getElementById('entriesSelect');
+const recordsTable = document.getElementById('viewRecordsTable');
+const recordsCountText = document.getElementById('recordsCountText');
+
+function updateRecordsTable() {
+    const keyword = recordsSearch.value.toLowerCase().trim();
+    const limit = parseInt(entriesSelect.value, 10);
+    const rows = Array.from(recordsTable.querySelectorAll('tbody tr'));
+
+    let visible = 0;
+
+    rows.forEach(row => {
+        if (row.querySelector('.empty-records-state')) return;
+
+        const text = row.innerText.toLowerCase();
+
+        if (text.includes(keyword) && visible < limit) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    recordsCountText.textContent = `Showing ${visible} record(s)`;
+}
+
+recordsSearch.addEventListener('keyup', updateRecordsTable);
+entriesSelect.addEventListener('change', updateRecordsTable);
+
+updateRecordsTable();
+</script>
+
+</body>
+</html>

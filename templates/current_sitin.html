@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Sit In - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="#" onclick="history.back(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}" class="active">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+        <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+    </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="admin-wrapper">
+    <div class="current-shell">
+
+        <div class="current-hero">
+            <h1 class="current-title">Current Sit In</h1>
+            <p class="current-subtitle">Manage active sit-in students and log them out when done.</p>
+        </div>
+
+        <div class="current-panel">
+            <div class="current-toolbar">
+                <div class="current-toolbar-left">
+                    <label for="entriesSelect" class="toolbar-label">Show</label>
+
+                    <select id="entriesSelect" class="toolbar-select">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+
+                    <span class="toolbar-text">entries</span>
+                </div>
+
+                <div class="current-toolbar-right">
+                    <label for="currentSearch" class="toolbar-label">Search</label>
+                    <input type="text" id="currentSearch" class="toolbar-search" placeholder="Search active records...">
+                </div>
+            </div>
+
+            <div class="admin-table-wrap current-table-wrap">
+                <table class="admin-table current-table" id="currentSitinTable">
+                    <thead>
+                        <tr>
+                            <th>Sit ID Number</th>
+                            <th>ID Number</th>
+                            <th>Name</th>
+                            <th>Purpose</th>
+                            <th>Sit Lab</th>
+                            <th>Session</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for record in sitin_records %}
+                        <tr>
+                            <td>{{ record.id }}</td>
+                            <td>{{ record.student_id_number }}</td>
+                            <td class="student-name-cell">{{ record.student_name }}</td>
+                            <td>{{ record.purpose }}</td>
+                            <td>{{ record.sit_lab }}</td>
+                            <td>
+                                <span class="session-pill">
+                                    {{ record.session }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-active">
+                                    Active
+                                </span>
+                            </td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="current-action-btn openEvaluationBtn"
+                                    data-record-id="{{ record.id }}"
+                                    data-student-name="{{ record.student_name }}"
+                                    data-purpose="{{ record.purpose }}"
+                                    data-lab="{{ record.sit_lab }}"
+                                    data-profile-pic="{{ student_pic_map.get(record.student_id_number, '') }}"
+                                >
+                                    Logout
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-records-state">
+                                    No current sit-in records.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="current-footer">
+                <span id="currentCountText">
+                    Showing current sit-in records
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SESSION EVALUATION MODAL -->
+<div class="evaluation-overlay" id="evaluationOverlay">
+
+    <div class="evaluation-modal">
+
+        <div class="evaluation-header">
+            <div>
+                <h2>📋 Session Evaluation</h2>
+               
+            </div>
+
+            <button type="button" class="evaluation-close" id="closeEvaluation">
+                ✕
+            </button>
+        </div>
+
+        <form method="POST" id="evaluationForm">
+
+            <div class="evaluation-student-card">
+                <div class="evaluation-avatar" id="evaluationAvatar">
+                    ST
+                </div>
+
+                <div>
+                    <h3 id="evaluationStudentName">Student Name</h3>
+                    <p id="evaluationStudentInfo">Purpose • Lab</p>
+                </div>
+            </div>
+
+            <h4 class="evaluation-title">
+                Evaluate This Session
+            </h4>
+
+            <label class="evaluation-card">
+                <input type="checkbox" name="clean_workstation">
+
+                <div class="evaluation-card-content">
+                    <h3>🧹 Clean Workstation</h3>
+                    <p>
+                        Chair arranged, no trash left, keyboard/mouse organized.
+                    </p>
+
+                    <span class="evaluation-badge blue">
+                        WEIGHT: 50%
+                    </span>
+                </div>
+            </label>
+
+            <label class="evaluation-card">
+                <input type="checkbox" name="total_hours">
+
+                <div class="evaluation-card-content">
+                    <h3>⏰ Total Hours Completed</h3>
+                    <p>
+                        Student completed the required session time.
+                    </p>
+
+                    <span class="evaluation-badge orange">
+                        WEIGHT: 30%
+                    </span>
+                </div>
+            </label>
+
+            <label class="evaluation-card">
+                <input type="checkbox" name="task_completed">
+
+                <div class="evaluation-card-content">
+                    <h3>✅ Task Completed</h3>
+                    <p>
+                        Did the student finish their sit-in purpose/task?
+                    </p>
+
+                    <span class="evaluation-badge green">
+                        WEIGHT: 20%
+                    </span>
+                </div>
+            </label>
+
+            <div class="evaluation-actions">
+                <button type="button" class="evaluation-cancel-btn" id="cancelEvaluation">
+                    Cancel
+                </button>
+
+                <button type="submit" class="evaluation-submit-btn">
+                    Logout & Save Evaluation
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+const searchInput = document.getElementById('currentSearch');
+const entriesSelect = document.getElementById('entriesSelect');
+const table = document.getElementById('currentSitinTable');
+const countText = document.getElementById('currentCountText');
+
+function updateTable() {
+    const keyword = searchInput.value.toLowerCase().trim();
+    const limit = parseInt(entriesSelect.value, 10);
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    let visible = 0;
+
+    rows.forEach(row => {
+        if (row.querySelector('.empty-records-state')) return;
+
+        const text = row.innerText.toLowerCase();
+
+        if (text.includes(keyword) && visible < limit) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    countText.textContent = `Showing ${visible} active record(s)`;
+}
+
+searchInput.addEventListener('keyup', updateTable);
+entriesSelect.addEventListener('change', updateTable);
+
+updateTable();
+</script>
+
+<script>
+const evaluationOverlay = document.getElementById('evaluationOverlay');
+const evaluationForm = document.getElementById('evaluationForm');
+const evaluationStudentName = document.getElementById('evaluationStudentName');
+const evaluationStudentInfo = document.getElementById('evaluationStudentInfo');
+const evaluationAvatar = document.getElementById('evaluationAvatar');
+
+document.querySelectorAll('.openEvaluationBtn').forEach(button => {
+    button.addEventListener('click', () => {
+        const recordId = button.dataset.recordId;
+        const studentName = button.dataset.studentName;
+        const purpose = button.dataset.purpose;
+        const lab = button.dataset.lab;
+        const profilePic = button.dataset.profilePic;
+
+        evaluationOverlay.classList.add('show');
+
+        evaluationStudentName.innerText = studentName;
+       
+        evaluationStudentInfo.innerText = `${purpose} • ${lab}`;
+
+        const initials = studentName
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map(word => word[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase();
+
+        if (profilePic && profilePic !== 'default.png') {
+            evaluationAvatar.innerHTML = `
+                <img src="/static/uploads/${profilePic}" alt="${studentName}">
+            `;
+        } else {
+            evaluationAvatar.innerText = initials || 'ST';
+        }
+
+        evaluationForm.action = `/logout_sitin/${recordId}`;
+    });
+});
+
+document.getElementById('closeEvaluation').onclick = () => {
+    evaluationOverlay.classList.remove('show');
+};
+
+document.getElementById('cancelEvaluation').onclick = () => {
+    evaluationOverlay.classList.remove('show');
+};
+
+evaluationOverlay.addEventListener('click', (event) => {
+    if (event.target === evaluationOverlay) {
+        evaluationOverlay.classList.remove('show');
+    }
+});
+</script>
+
+</body>
+</html>

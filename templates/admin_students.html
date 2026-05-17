@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students Information - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="#" onclick="history.back(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}" class="active">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="admin-wrapper">
+    <div class="students-shell">
+
+        <div class="students-hero">
+            <h1 class="students-main-title">Students Information</h1>
+            <p class="students-subtitle">Manage registered student accounts and monitor their remaining sessions.</p>
+        </div>
+
+        <div class="students-toolbar">
+            <div class="students-toolbar-left">
+                <button type="button" class="students-main-btn btn-add-student" onclick="openAddStudentModal()">
+                    Add Students
+                </button>
+
+                <form method="POST" action="{{ url_for('reset_all_sessions') }}" onsubmit="return confirm('Reset all student sessions to 30?');">
+                    <button type="submit" class="students-main-btn btn-reset-session">
+                        Reset All Session
+                    </button>
+                </form>
+            </div>
+
+            <div class="students-toolbar-right">
+                <label class="toolbar-label">Search</label>
+                <input
+                    type="text"
+                    id="studentSearch"
+                    class="toolbar-search"
+                    placeholder="Search students..."
+                >
+            </div>
+        </div>
+
+        <div class="students-panel">
+            <div class="admin-table-wrap students-table-wrap">
+                <table class="admin-table students-table" id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>ID Number</th>
+                            <th>Name</th>
+                            <th>Year Level</th>
+                            <th>Course</th>
+                            <th>Remaining Session</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.id_number }}</td>
+                            <td class="student-name-cell">
+                                {{ student.first_name }} {{ student.last_name }}
+                            </td>
+                            <td>{{ student.course_level }}</td>
+                            <td>{{ student.course }}</td>
+                            <td>
+                                <span class="session-pill">
+                                    {{ student.remaining_sessions if student.remaining_sessions is not none else 30 }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="student-actions">
+                                    <button
+                                        type="button"
+                                        class="student-action-btn btn-edit-student"
+                                        onclick="openEditStudentModal(
+                                            '{{ student.id }}',
+                                            '{{ student.id_number }}',
+                                            '{{ student.first_name|escape }}',
+                                            '{{ student.middle_name|default('', true)|escape }}',
+                                            '{{ student.last_name|escape }}',
+                                            '{{ student.course|escape }}',
+                                            '{{ student.course_level|escape }}',
+                                            '{{ student.email|default('', true)|escape }}',
+                                            '{{ student.address|default('', true)|escape }}',
+                                            '{{ student.remaining_sessions if student.remaining_sessions is not none else 30 }}'
+                                        )"
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <form method="POST" action="{{ url_for('delete_student', student_id=student.id) }}" style="display:inline;" onsubmit="return confirm('Delete this student?');">
+                                        <button type="submit" class="student-action-btn btn-delete-student">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-records-state">
+                                    No students found.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="students-footer">
+                <span id="studentsCountText">Showing {{ students|length }} student(s)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD STUDENT MODAL -->
+<div class="search-modal" id="addStudentModal">
+    <div class="search-modal-content sitin-modal">
+        <div class="search-modal-header">
+            <h3>Add Student</h3>
+            <button type="button" class="close-btn" onclick="closeAddStudentModal()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('add_student') }}">
+            <div class="sitin-modal-body">
+
+                <div class="sitin-row">
+                    <label>ID Number:</label>
+                    <input type="text" name="id_number" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>First Name:</label>
+                    <input type="text" name="first_name" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Middle Name:</label>
+                    <input type="text" name="middle_name">
+                </div>
+
+                <div class="sitin-row">
+                    <label>Last Name:</label>
+                    <input type="text" name="last_name" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Course:</label>
+                    <select name="course" required>
+                        <option value="BSIT">BSIT</option>
+                        <option value="BSCS">BSCS</option>
+                        <option value="BSIS">BSIS</option>
+                        <option value="ACT">ACT</option>
+                        <option value="BSCE">BSCE</option>
+                        <option value="BSEE">BSEE</option>
+                        <option value="BSME">BSME</option>
+                        <option value="BSEcE">BSEcE</option>
+                        <option value="BSIE">BSIE</option>
+                        <option value="BSBA">BSBA</option>
+                        <option value="BSA">BSA</option>
+                        <option value="BSMA">BSMA</option>
+                        <option value="BEED">BEED</option>
+                        <option value="BSED">BSED</option>
+                        <option value="AB-PolSci">AB Political Science</option>
+                        <option value="AB-English">AB English</option>
+                        <option value="BSP">BS Psychology</option>
+                        <option value="BSBio">BS Biology</option>
+                        <option value="BSN">BSN</option>
+                        <option value="BSArch">BSArch</option>
+                        <option value="BSTM">BSTM</option>
+                        <option value="BSHM">BSHM</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Year Level:</label>
+                    <select name="course_level" required>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Email:</label>
+                    <input type="email" name="email" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Address:</label>
+                    <input type="text" name="address">
+                </div>
+            </div>
+
+            <div class="sitin-modal-footer">
+                <button type="button" class="btn-close-modal" onclick="closeAddStudentModal()">Close</button>
+                <button type="submit" class="btn-sitin">Add Student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT STUDENT MODAL -->
+<div class="search-modal" id="editStudentModal">
+    <div class="search-modal-content sitin-modal">
+        <div class="search-modal-header">
+            <h3>Edit Student</h3>
+            <button type="button" class="close-btn" onclick="closeEditStudentModal()">×</button>
+        </div>
+
+        <form method="POST" id="editStudentForm">
+            <div class="sitin-modal-body">
+
+                <div class="sitin-row">
+                    <label>ID Number:</label>
+                    <input type="text" name="id_number" id="edit_id_number" readonly>
+                </div>
+
+                <div class="sitin-row">
+                    <label>First Name:</label>
+                    <input type="text" name="first_name" id="edit_first_name" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Middle Name:</label>
+                    <input type="text" name="middle_name" id="edit_middle_name">
+                </div>
+
+                <div class="sitin-row">
+                    <label>Last Name:</label>
+                    <input type="text" name="last_name" id="edit_last_name" required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Course:</label>
+                    <select name="course" id="edit_course" required>
+                        <option value="BSIT">BSIT</option>
+                        <option value="BSCS">BSCS</option>
+                        <option value="BSIS">BSIS</option>
+                        <option value="ACT">ACT</option>
+                        <option value="BSCE">BSCE</option>
+                        <option value="BSEE">BSEE</option>
+                        <option value="BSME">BSME</option>
+                        <option value="BSEcE">BSEcE</option>
+                        <option value="BSIE">BSIE</option>
+                        <option value="BSBA">BSBA</option>
+                        <option value="BSA">BSA</option>
+                        <option value="BSMA">BSMA</option>
+                        <option value="BEED">BEED</option>
+                        <option value="BSED">BSED</option>
+                        <option value="AB-PolSci">AB Political Science</option>
+                        <option value="AB-English">AB English</option>
+                        <option value="BSP">BS Psychology</option>
+                        <option value="BSBio">BS Biology</option>
+                        <option value="BSN">BSN</option>
+                        <option value="BSArch">BSArch</option>
+                        <option value="BSTM">BSTM</option>
+                        <option value="BSHM">BSHM</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Year Level:</label>
+                    <select name="course_level" id="edit_course_level" required>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Email:</label>
+                    <input type="email" name="email" id="edit_email" readonly>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Address:</label>
+                    <input type="text" name="address" id="edit_address">
+                </div>
+
+                <div class="sitin-row">
+                    <label>Remaining Session:</label>
+                    <input type="number" name="remaining_sessions" id="edit_remaining_sessions" min="0" required>
+                </div>
+            </div>
+
+            <div class="sitin-modal-footer">
+                <button type="button" class="btn-close-modal" onclick="closeEditStudentModal()">Close</button>
+                <button type="submit" class="btn-sitin">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const studentSearch = document.getElementById('studentSearch');
+const studentsTable = document.getElementById('studentsTable');
+const studentsCountText = document.getElementById('studentsCountText');
+
+function updateStudentsTable() {
+    const keyword = studentSearch.value.toLowerCase().trim();
+    const rows = Array.from(studentsTable.querySelectorAll('tbody tr'));
+
+    let visible = 0;
+
+    rows.forEach(row => {
+        if (row.querySelector('.empty-records-state')) return;
+
+        const text = row.innerText.toLowerCase();
+
+        if (text.includes(keyword)) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    studentsCountText.textContent = `Showing ${visible} student(s)`;
+}
+
+studentSearch.addEventListener('keyup', updateStudentsTable);
+updateStudentsTable();
+
+function openAddStudentModal() {
+    const modal = document.getElementById('addStudentModal');
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
+}
+
+function closeAddStudentModal() {
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 180);
+}
+
+function openEditStudentModal(id, idNumber, firstName, middleName, lastName, course, courseLevel, email, address, remainingSessions) {
+    document.getElementById('editStudentForm').action = `/edit_student/${id}`;
+    document.getElementById('edit_id_number').value = idNumber;
+    document.getElementById('edit_first_name').value = firstName;
+    document.getElementById('edit_middle_name').value = middleName;
+    document.getElementById('edit_last_name').value = lastName;
+    document.getElementById('edit_course').value = course;
+    document.getElementById('edit_course_level').value = courseLevel;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_address').value = address;
+    document.getElementById('edit_remaining_sessions').value = remainingSessions;
+
+    const modal = document.getElementById('editStudentModal');
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
+}
+
+function closeEditStudentModal() {
+    const modal = document.getElementById('editStudentModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 180);
+}
+
+window.addEventListener('click', function(event) {
+    const addModal = document.getElementById('addStudentModal');
+    const editModal = document.getElementById('editStudentModal');
+
+    if (event.target === addModal) {
+        closeAddStudentModal();
+    }
+
+    if (event.target === editModal) {
+        closeEditStudentModal();
+    }
+});
+</script>
+
+</body>
+</html>

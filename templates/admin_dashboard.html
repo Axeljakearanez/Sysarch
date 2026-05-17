@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="active">Home</a>
+        <a href="#" onclick="openSearchModal(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+       <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="admin-wrapper">
+    <div class="admin-grid">
+
+        <!-- STATISTICS -->
+        <div class="admin-card">
+            <div class="admin-card-header">📊 Statistics</div>
+            <div class="admin-card-body">
+                <div class="stats-grid">
+
+                    <div class="stat-box">
+                        <div class="stat-label">Students Registered</div>
+                        <div class="stat-value">{{ total_students }}</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-label">Currently Sit-in</div>
+                        <div class="stat-value">{{ current_sitin_count }}</div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-label">Total Sit-in</div>
+                        <div class="stat-value">{{ total_sitin_count }}</div>
+                    </div>
+
+                </div>
+
+                <div class="chart-placeholder">
+                    <canvas id="purposeChart"></canvas>
+                </div>
+
+                <div class="purpose-summary">
+                    {% if purpose_labels and purpose_counts %}
+                        {% for i in range(purpose_labels|length) %}
+                            <div class="purpose-item">
+                                <span class="purpose-name">{{ purpose_labels[i] }}</span>
+                                <span class="purpose-count">{{ purpose_counts[i] }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-purpose-data">No sit-in purpose data yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ANNOUNCEMENT -->
+        <div class="admin-card">
+            <div class="admin-card-header">📢 Announcement</div>
+
+            <div class="admin-card-body">
+                <form method="POST" action="{{ url_for('submit_announcement') }}">
+                    <label class="admin-label">New Announcement</label>
+
+                    <textarea
+                        class="admin-textarea"
+                        name="content"
+                        placeholder="Write announcement here..."
+                        required
+                    ></textarea>
+
+                    <button
+                        class="admin-submit-btn"
+                        type="submit"
+                        onclick="return confirm('Submit announcement?')"
+                    >
+                        Submit
+                    </button>
+                </form>
+
+                <h3 class="posted-title">Posted Announcement</h3>
+
+                {% for announcement in announcements %}
+                <div class="posted-box">
+                    <p><strong>{{ announcement.author }} | {{ announcement.created_at }}</strong></p>
+                    <p>{{ announcement.content }}</p>
+                </div>
+                {% else %}
+                <div class="posted-box">
+                    <p>No announcements yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- HIDDEN STUDENT TABLE FOR SEARCH -->
+<table id="adminStudentTable" style="display:none;">
+    <tbody>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.id_number }}</td>
+            <td>{{ student.first_name }} {{ student.middle_name }} {{ student.last_name }}</td>
+            <td>{{ student.course }}</td>
+            <td>{{ student.course_level }}</td>
+            <td>{{ student.email }}</td>
+            <td>{{ student.address if student.address else 'Not set' }}</td>
+            <td>{{ student.remaining_sessions }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- SEARCH INPUT MODAL -->
+<div class="search-modal" id="searchModal">
+    <div class="search-modal-content">
+        <div class="search-modal-header">
+            <h3>Search Student</h3>
+            <button type="button" class="close-btn" onclick="closeSearchModal()">×</button>
+        </div>
+
+        <div class="search-modal-body search-student-layout">
+            <input
+                type="text"
+                id="studentSearchInput"
+                placeholder="Enter ID number or student name"
+                oninput="searchStudentLive()"
+                onkeydown="if(event.key === 'Enter'){ searchStudent(); }"
+                autocomplete="off"
+            >
+            <button type="button" onclick="searchStudent()">Search</button>
+        </div>
+
+        <div id="searchResultsBox" class="search-results-box" style="display:none;">
+            <div id="searchResultsList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT RESULT / SIT-IN MODAL -->
+<div class="search-modal" id="studentModal">
+    <div class="search-modal-content sitin-modal">
+        <div class="search-modal-header">
+            <h3>Sit In Form</h3>
+            <button type="button" class="close-btn" onclick="closeStudentModal()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('submit_sitin') }}">
+            <div class="sitin-modal-body">
+                <div class="sitin-row">
+                    <label>ID Number:</label>
+                    <input type="text" id="modalId" name="student_id_number" readonly required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Student Name:</label>
+                    <input type="text" id="modalName" name="student_name" readonly required>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Purpose:</label>
+                    <select id="modalPurpose" name="purpose" required>
+                        <option value="C Programming">C Programming</option>
+                        <option value="Java Programming">Java Programming</option>
+                        <option value="Python Programming">Python Programming</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="Database">Database</option>
+                        <option value="Research">Research</option>
+                        <option value="Project">Project</option>
+                        <option value="Assignment">Assignment</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Lab:</label>
+                    <select id="modalLab" name="sit_lab" required>
+                        <option value="524">524</option>
+                        <option value="526">526</option>
+                        <option value="528">528</option>
+                        <option value="530">530</option>
+                        <option value="542">542</option>
+                        <option value="544">544</option>
+                    </select>
+                </div>
+
+                <div class="sitin-row">
+                    <label>Remaining Session:</label>
+                    <input type="text" id="modalSession" name="remaining_session" readonly>
+                </div>
+            </div>
+
+            <div class="sitin-modal-footer">
+                <button type="button" class="btn-close-modal" onclick="closeStudentModal()">Close</button>
+                <button
+                    type="submit"
+                    class="btn-sitin"
+                    onclick="return confirm('Confirm sit-in?')"
+                >
+                    Sit In
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function getStudentsFromTable() {
+    const rows = document.querySelectorAll('#adminStudentTable tbody tr');
+    const students = [];
+
+    for (let row of rows) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 7) continue;
+
+        students.push({
+            idNumber: cells[0].innerText.trim(),
+            fullName: cells[1].innerText.trim().replace(/\s+/g, ' '),
+            course: cells[2].innerText.trim(),
+            courseLevel: cells[3].innerText.trim(),
+            email: cells[4].innerText.trim(),
+            address: cells[5].innerText.trim(),
+            remainingSessions: cells[6].innerText.trim()
+        });
+    }
+
+    return students;
+}
+
+function openSearchModal() {
+    const modal = document.getElementById('searchModal');
+    modal.style.display = 'flex';
+
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
+
+    document.getElementById('studentSearchInput').value = '';
+    document.getElementById('studentSearchInput').focus();
+    clearSearchResults();
+}
+
+function closeSearchModal() {
+    const modal = document.getElementById('searchModal');
+    modal.classList.remove('show');
+
+    setTimeout(() => {
+        modal.style.display = 'none';
+        clearSearchResults();
+    }, 180);
+}
+
+function openStudentModal(student) {
+    document.getElementById('modalId').value = student.idNumber;
+    document.getElementById('modalName').value = student.fullName;
+    document.getElementById('modalPurpose').value = 'C Programming';
+    document.getElementById('modalLab').value = '524';
+    document.getElementById('modalSession').value = student.remainingSessions;
+
+    const modal = document.getElementById('studentModal');
+    modal.style.display = 'flex';
+
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
+}
+
+function closeStudentModal() {
+    const modal = document.getElementById('studentModal');
+    modal.classList.remove('show');
+
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 180);
+}
+
+function clearSearchResults() {
+    document.getElementById('searchResultsList').innerHTML = '';
+    document.getElementById('searchResultsBox').style.display = 'none';
+}
+
+function renderSearchResults(matches) {
+    const resultsBox = document.getElementById('searchResultsBox');
+    const resultsList = document.getElementById('searchResultsList');
+
+    resultsList.innerHTML = '';
+
+    if (matches.length === 0) {
+        resultsList.innerHTML = `
+            <div class="search-empty-state">No matching student found.</div>
+        `;
+        resultsBox.style.display = 'block';
+        return;
+    }
+
+    matches.forEach((student) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'search-result-item';
+        item.innerHTML = `
+            <div class="search-result-main">
+                <div class="search-result-name">${student.fullName}</div>
+                <div class="search-result-meta">
+                    ID: ${student.idNumber} • ${student.course} - ${student.courseLevel}
+                </div>
+            </div>
+            <div class="search-result-session">
+                ${student.remainingSessions} session(s)
+            </div>
+        `;
+
+        item.onclick = function () {
+            openStudentModal(student);
+            closeSearchModal();
+        };
+
+        resultsList.appendChild(item);
+    });
+
+    resultsBox.style.display = 'block';
+}
+
+function findMatches(input) {
+    const students = getStudentsFromTable();
+    const keyword = input.trim().toLowerCase();
+
+    if (!keyword) return [];
+
+    const exactIdMatches = students.filter(student =>
+        student.idNumber.toLowerCase() === keyword
+    );
+
+    if (exactIdMatches.length > 0) {
+        return exactIdMatches;
+    }
+
+    return students.filter(student => {
+        const idMatch = student.idNumber.toLowerCase().includes(keyword);
+        const nameMatch = student.fullName.toLowerCase().includes(keyword);
+        return idMatch || nameMatch;
+    });
+}
+
+function searchStudentLive() {
+    const input = document.getElementById('studentSearchInput').value;
+    const matches = findMatches(input);
+
+    if (!input.trim()) {
+        clearSearchResults();
+        return;
+    }
+
+    renderSearchResults(matches);
+}
+
+function searchStudent() {
+    const input = document.getElementById('studentSearchInput').value;
+    const matches = findMatches(input);
+
+    if (!input.trim()) {
+        alert('Please enter a student name or ID number.');
+        return;
+    }
+
+    if (matches.length === 0) {
+        renderSearchResults([]);
+        return;
+    }
+
+    if (matches.length === 1) {
+        openStudentModal(matches[0]);
+        closeSearchModal();
+        return;
+    }
+
+    renderSearchResults(matches);
+}
+
+window.onclick = function(event) {
+    const searchModal = document.getElementById('searchModal');
+    const studentModal = document.getElementById('studentModal');
+
+    if (event.target === searchModal) {
+        closeSearchModal();
+    }
+
+    if (event.target === studentModal) {
+        closeStudentModal();
+    }
+};
+
+const purposeLabels = JSON.parse('{{ purpose_labels | tojson | safe }}');
+const purposeCounts = JSON.parse('{{ purpose_counts | tojson | safe }}');
+
+const ctx = document.getElementById('purposeChart');
+
+if (ctx && purposeLabels.length > 0) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: purposeLabels,
+            datasets: [{
+                label: 'Sit-ins per Purpose',
+                data: purposeCounts,
+                backgroundColor: [
+                    '#4B2D8F',
+                    '#E05A93',
+                    '#F0A24A',
+                    '#E4C15A',
+                    '#59BEC0',
+                    '#7C5CFA',
+                    '#F5B000',
+                    '#8BC34A'
+                ],
+                borderRadius: 10,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        color: '#2f2941'
+                    },
+                    grid: {
+                        color: 'rgba(75, 45, 143, 0.08)'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: '#2f2941',
+                        font: {
+                            size: 12,
+                            weight: '600'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + context.raw + ' sit-in(s)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>

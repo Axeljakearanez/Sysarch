@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Management - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="#" onclick="history.back(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}" class="active">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">{{ message }}</div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+          const a = document.getElementById('flashAlert');
+          if (a) a.classList.add('hide');
+      }, 2000);
+      setTimeout(() => {
+          const a = document.getElementById('flashAlert');
+          if (a) a.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="admin-wrapper">
+    <div class="armgmt-panel">
+
+        <div class="armgmt-header">
+            <div class="armgmt-header-left">
+                <span class="armgmt-header-icon">🖥️</span>
+                <div>
+                    <div class="armgmt-header-title">Reservation Management</div>
+                    <div class="armgmt-header-sub">Manage lab bookings, availability and PC maintenance</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="armgmt-tabs">
+            <button class="armgmt-tab active" onclick="switchTab('all', this)">🖥️ All Reservations</button>
+            <button class="armgmt-tab" onclick="switchTab('availability', this)">📅 Lab Availability</button>
+            <button class="armgmt-tab" onclick="switchTab('pcstatus', this)">💻 PC Status</button>
+        </div>
+
+        <!-- ALL RESERVATIONS -->
+        <div class="armgmt-tab-body active" id="tabAll">
+
+            <div class="armgmt-filters">
+                <div class="armgmt-filter-group">
+                    <label class="armgmt-filter-label">STATUS</label>
+                    <select class="armgmt-filter-select" id="filterStatus" onchange="filterTable()">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+
+                <div class="armgmt-filter-group">
+                    <label class="armgmt-filter-label">DATE</label>
+                    <input type="date" class="armgmt-filter-date" id="filterDate" onchange="filterTable()">
+                </div>
+
+                <div class="armgmt-filter-group">
+                    <label class="armgmt-filter-label">LAB</label>
+                    <select class="armgmt-filter-select" id="filterLab" onchange="filterTable()">
+                        <option value="">All Labs</option>
+                        <option>Lab 524</option>
+                        <option>Lab 526</option>
+                        <option>Lab 528</option>
+                        <option>Lab 530</option>
+                        <option>Lab 542</option>
+                        <option>Lab 544</option>
+                    </select>
+                </div>
+
+                <button class="armgmt-reset-btn" onclick="resetFilters()">↺ Reset</button>
+
+                <div class="armgmt-search-wrap">
+                    <span class="armgmt-search-icon">🔍</span>
+                    <input type="text" class="armgmt-search" id="armSearch" placeholder="Search student, ID..." oninput="filterTable()">
+                </div>
+            </div>
+
+            <div class="armgmt-table-wrap">
+                <table class="armgmt-table" id="armTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student</th>
+                            <th>Lab</th>
+                            <th>Date</th>
+                            <th>Time Slot</th>
+                            <th>PC</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="armTableBody">
+                        {% for r in reservations %}
+                        <tr
+    data-status="{{ r.status }}"
+    data-lab="{{ r.lab }}"
+    data-date="{{ r.date }}"
+    data-search="{{ (r.student_name ~ ' ' ~ r.student_id_number)|lower }}"
+>
+    <td>{{ loop.index }}</td>
+
+    <td>
+        <div class="armgmt-student-cell">
+            {% if r.student and r.student.profile_pic and r.student.profile_pic != 'default.png' %}
+                <img
+                    src="{{ url_for('static', filename='uploads/' + r.student.profile_pic) }}"
+                    alt="Profile"
+                    class="armgmt-avatar-image"
+                >
+            {% else %}
+                <div class="armgmt-avatar-circle">{{ r.student_name[0]|upper }}</div>
+            {% endif %}
+
+            <div>
+                <div class="armgmt-student-name">{{ r.student_name }}</div>
+                <div class="armgmt-student-id">{{ r.student_id_number }}</div>
+            </div>
+        </div>
+    </td>
+
+    <td><span class="armgmt-lab-badge">{{ r.lab }}</span></td>
+    <td>{{ r.date }}</td>
+    <td>{{ r.time_slot }}</td>
+    <td><strong>PC #{{ r.pc_number }}</strong></td>
+
+    <td>
+        {% if r.status == 'Pending' %}
+            <span class="armgmt-status armgmt-status-pending">⚑ Pending</span>
+        {% elif r.status == 'Approved' %}
+            <span class="armgmt-status armgmt-status-approved">✓ Approved</span>
+        {% else %}
+            <span class="armgmt-status armgmt-status-cancelled">✕ Cancelled</span>
+        {% endif %}
+    </td>
+
+    <td>
+        <div class="armgmt-actions">
+            {% if r.status == 'Pending' %}
+                <form method="POST" action="{{ url_for('approve_reservation', reservation_id=r.id) }}" style="display:inline">
+                    <button type="submit" class="armgmt-approve-btn" onclick="return confirm('Approve this reservation?')">✓ Approve</button>
+                </form>
+                <form method="POST" action="{{ url_for('decline_reservation', reservation_id=r.id) }}" style="display:inline">
+                    <button type="submit" class="armgmt-decline-btn" onclick="return confirm('Decline this reservation?')">✕ Decline</button>
+                </form>
+            {% elif r.status == 'Approved' %}
+                <form method="POST" action="{{ url_for('cancel_reservation_admin', reservation_id=r.id) }}" style="display:inline">
+                    <button type="submit" class="armgmt-cancel-btn" onclick="return confirm('Cancel this reservation?')">✕ Cancel</button>
+                </form>
+            {% else %}
+                <span class="armgmt-no-action">—</span>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="armgmt-empty">No reservations found.</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="armgmt-footer">
+                <span id="armCount">Showing {{ reservations|length }} of {{ reservations|length }} reservations</span>
+                {% set pending_count = reservations | selectattr('status', 'equalto', 'Pending') | list | length %}
+                {% if pending_count > 0 %}
+                    <span class="armgmt-pending-badge">{{ pending_count }} pending</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- LAB AVAILABILITY -->
+        <div class="armgmt-tab-body" id="tabAvailability">
+            <div class="armgmt-avail-wrap">
+                <div class="armgmt-avail-header">
+                    <h3>Lab Availability Overview</h3>
+                    <p>Current booking status per lab per time slot</p>
+                </div>
+
+                <div class="armgmt-filters" style="margin-bottom:18px;">
+                    <div class="armgmt-filter-group">
+                        <label class="armgmt-filter-label">DATE</label>
+                        <input type="date" class="armgmt-filter-date" id="availabilityDate" onchange="loadAvailability()">
+                    </div>
+                </div>
+
+                <div class="armgmt-avail-grid" id="availabilityGrid">
+                    <div class="armgmt-empty">Select a date to view lab availability.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PC STATUS -->
+        <div class="armgmt-tab-body" id="tabPcStatus">
+            <div class="armgmt-pc-status-wrap">
+                <div class="armgmt-pc-status-header">
+                    <h3>PC Maintenance Status</h3>
+                    <p>Mark PCs as under maintenance to hide them from bookings</p>
+                </div>
+
+                <div class="armgmt-pc-lab-select">
+                    <label>Select Lab:</label>
+                    <select class="armgmt-filter-select" id="pcStatusLab" onchange="renderPcStatusGrid()">
+                        <option>Lab 524</option>
+                        <option>Lab 526</option>
+                        <option>Lab 528</option>
+                        <option>Lab 530</option>
+                        <option>Lab 542</option>
+                        <option>Lab 544</option>
+                    </select>
+                </div>
+
+                <div id="pcStatusGrid" class="armgmt-pc-status-grid"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const LABS = ['Lab 524', 'Lab 526', 'Lab 528', 'Lab 530', 'Lab 542', 'Lab 544'];
+const DEFAULT_SLOTS = [
+    '07:00 AM – 09:00 AM',
+    '09:00 AM – 11:00 AM',
+    '11:00 AM – 01:00 PM',
+    '01:00 PM – 03:00 PM',
+    '03:00 PM – 05:00 PM',
+    '05:00 PM – 07:00 PM'
+];
+
+/* TAB SWITCHING */
+function switchTab(tab, btn) {
+    document.querySelectorAll('.armgmt-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.armgmt-tab-body').forEach(b => b.classList.remove('active'));
+
+    btn.classList.add('active');
+
+    const map = {
+        all: 'tabAll',
+        availability: 'tabAvailability',
+        pcstatus: 'tabPcStatus'
+    };
+
+    document.getElementById(map[tab]).classList.add('active');
+
+    if (tab === 'availability') {
+        loadAvailability();
+    }
+
+    if (tab === 'pcstatus') {
+        renderPcStatusGrid();
+    }
+}
+
+/* TABLE FILTER */
+function filterTable() {
+    const status = document.getElementById('filterStatus').value.toLowerCase();
+    const date = document.getElementById('filterDate').value;
+    const lab = document.getElementById('filterLab').value.toLowerCase();
+    const search = document.getElementById('armSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#armTableBody tr[data-status]');
+    let visible = 0;
+
+    rows.forEach(row => {
+        const rStatus = (row.dataset.status || '').toLowerCase();
+        const rDate = row.dataset.date || '';
+        const rLab = (row.dataset.lab || '').toLowerCase();
+        const rSearch = (row.dataset.search || '').toLowerCase();
+
+        const ok =
+            (!status || rStatus === status) &&
+            (!date || rDate === date) &&
+            (!lab || rLab === lab) &&
+            (!search || rSearch.includes(search));
+
+        row.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+    });
+
+    document.getElementById('armCount').textContent = `Showing ${visible} of ${rows.length} reservations`;
+}
+
+function resetFilters() {
+    ['filterStatus', 'filterDate', 'filterLab', 'armSearch'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    filterTable();
+}
+
+/* LAB AVAILABILITY */
+async function loadAvailability() {
+    const dateInput = document.getElementById('availabilityDate');
+    const grid = document.getElementById('availabilityGrid');
+    const selectedDate = dateInput.value;
+
+    if (!selectedDate) {
+        grid.innerHTML = `<div class="armgmt-empty">Select a date to view lab availability.</div>`;
+        return;
+    }
+
+    grid.innerHTML = `<div class="armgmt-empty">Loading availability...</div>`;
+
+    try {
+        const cardsHtml = await Promise.all(
+            LABS.map(async (lab) => {
+                const response = await fetch(`/api/reservation/time-slots?date=${encodeURIComponent(selectedDate)}&lab=${encodeURIComponent(lab)}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.time_slots) {
+                    return `
+                        <div class="armgmt-avail-card">
+                            <div class="armgmt-avail-lab-name">🖥️ ${lab}</div>
+                            <div class="armgmt-avail-slots">
+                                <div class="armgmt-avail-slot">
+                                    <span class="armgmt-avail-slot-time">Unavailable</span>
+                                    <span class="armgmt-avail-slot-status full">Error</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const slotRows = data.time_slots.map(slot => {
+                    const isFull = slot.is_full;
+                    return `
+                        <div class="armgmt-avail-slot">
+                            <span class="armgmt-avail-slot-time">${slot.time_slot}</span>
+                            <span class="armgmt-avail-slot-status ${isFull ? 'full' : 'available'}">
+                                ${isFull ? 'Full' : `${slot.available_count} free`}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="armgmt-avail-card">
+                        <div class="armgmt-avail-lab-name">🖥️ ${lab}</div>
+                        <div class="armgmt-avail-slots">
+                            ${slotRows}
+                        </div>
+                    </div>
+                `;
+            })
+        );
+
+        grid.innerHTML = cardsHtml.join('');
+    } catch (error) {
+        grid.innerHTML = `<div class="armgmt-empty">Failed to load lab availability.</div>`;
+    }
+}
+
+/* PC STATUS */
+async function renderPcStatusGrid() {
+    const lab = document.getElementById('pcStatusLab').value;
+    const grid = document.getElementById('pcStatusGrid');
+
+    grid.innerHTML = `<div class="armgmt-empty">Loading PCs...</div>`;
+
+    try {
+        const response = await fetch(`/api/admin/pc-status?lab=${encodeURIComponent(lab)}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.pcs) {
+            grid.innerHTML = `<div class="armgmt-empty">Failed to load PC status.</div>`;
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        data.pcs.forEach(pc => {
+            const isMaint = pc.status === 'Maintenance';
+            const cell = document.createElement('div');
+
+            cell.className = 'armgmt-pc-cell' + (isMaint ? ' maintenance' : ' available');
+            cell.innerHTML = `
+                <span class="armgmt-pc-cell-icon">💻</span>
+                <span class="armgmt-pc-cell-num">PC ${pc.pc_number}</span>
+                <span class="armgmt-pc-cell-tag">${isMaint ? 'Maintenance' : 'Available'}</span>
+            `;
+
+            cell.onclick = () => toggleMaintenance(lab, pc.pc_number);
+            grid.appendChild(cell);
+        });
+    } catch (error) {
+        grid.innerHTML = `<div class="armgmt-empty">Failed to connect to the server.</div>`;
+    }
+}
+
+async function toggleMaintenance(lab, pcNumber) {
+    try {
+        const formData = new FormData();
+        formData.append('lab', lab);
+        formData.append('pc_number', pcNumber);
+
+        const response = await fetch('/api/admin/toggle-pc-status', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || 'Failed to update PC status.');
+            return;
+        }
+
+        renderPcStatusGrid();
+
+        const availabilityDate = document.getElementById('availabilityDate').value;
+        if (availabilityDate) {
+            loadAvailability();
+        }
+    } catch (error) {
+        alert('Failed to connect to the server.');
+    }
+}
+
+/* DEFAULT DATE */
+(function initAvailabilityDate() {
+    const today = new Date().toISOString().split('T')[0];
+    const availabilityDate = document.getElementById('availabilityDate');
+
+    availabilityDate.value = today;
+
+    // AUTO LOAD ON PAGE LOAD
+    loadAvailability();
+})();
+
+// AUTO REFRESH EVERY 10 SECONDS (ONLY IF AVAILABILITY TAB IS OPEN)
+setInterval(() => {
+    const activeTab = document.querySelector('.armgmt-tab.active');
+    if (activeTab && activeTab.textContent.includes('Availability')) {
+        loadAvailability();
+    }
+}, 10000);
+</script>
+
+</body>
+</html>

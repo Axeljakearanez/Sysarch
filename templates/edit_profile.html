@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="dashboard-page">
+
+    <nav class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="brand">College of Computer Studies Sit-in Monitoring System</a>
+        <div class="nav-links">
+           <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
+            Notification
+            {% if notif_reservations|length + feedback_notifications|length > 0 %}
+                <span class="notif-alert-badge">!</span>
+            {% endif %}
+        </a>
+            <a href="{{ url_for('dashboard') }}">Home</a>
+            <a href="{{ url_for('edit_profile') }}" class="nav-active">Edit Profile</a>
+            <a href="{{ url_for('history') }}">History</a>
+            <a href="{{ url_for('reservation') }}">Reservation</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+    </nav>
+
+
+    <div class="edit-wrapper">
+        <div class="edit-card">
+
+            {% if error %}
+                <div class="alert-error">⚠ {{ error }}</div>
+            {% endif %}
+
+            {% if success %}
+                <div class="alert-success">✓ {{ success }}</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('edit_profile') }}" enctype="multipart/form-data">
+
+                <div class="section-label">Profile Picture</div>
+                <div class="profile-pic-wrap">
+                    <img
+                        id="preview"
+                        src="{% if student.profile_pic and student.profile_pic != 'default.png' %}{{ url_for('static', filename='uploads/' + student.profile_pic) }}{% else %}https://ui-avatars.com/api/?name={{ student.first_name }}+{{ student.last_name }}&background=4B2D8F&color=fff&size=128{% endif %}"
+                        alt="Profile Picture"
+                    >
+
+                    <div class="profile-pic-info">
+                        <p>Upload a new profile photo</p>
+                        <p class="pic-hint">JPG, PNG, WEBP accepted</p>
+                        <label for="profile_pic" class="btn-upload">Choose Photo</label>
+                        <input
+                            type="file"
+                            id="profile_pic"
+                            name="profile_pic"
+                            accept=".png,.jpg,.jpeg,.webp,image/*"
+                            onchange="previewImage(this)"
+                        >
+                    </div>
+                </div>
+
+                <div class="section-label">Personal Information</div>
+
+                <div class="field-row">
+                    <div class="field-wrap">
+                        <label class="field-label">First Name</label>
+                        <input type="text" name="first_name" value="{{ student.first_name or '' }}" required>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="field-label">Last Name</label>
+                        <input type="text" name="last_name" value="{{ student.last_name or '' }}" required>
+                    </div>
+                </div>
+
+                <div class="field-wrap">
+                    <label class="field-label">Middle Name <span class="optional">(optional)</span></label>
+                    <input type="text" name="middle_name" value="{{ student.middle_name or '' }}">
+                </div>
+
+                <div class="field-wrap">
+                    <label class="field-label">Email</label>
+                    <input type="email" name="email" value="{{ student.email or '' }}" required>
+                </div>
+
+                <div class="field-wrap">
+                    <label class="field-label">Address</label>
+                    <input type="text" name="address" value="{{ student.address or '' }}">
+                </div>
+
+                <div class="section-label">
+                    Change Password <span class="optional">(leave blank to keep current)</span>
+                </div>
+
+                <div class="field-row">
+                    <div class="field-wrap">
+                        <label class="field-label">New Password</label>
+                        <input type="password" name="new_password" placeholder="Min. 6 characters">
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="field-label">Confirm Password</label>
+                        <input type="password" name="confirm_password" placeholder="Repeat new password">
+                    </div>
+                </div>
+
+                <div class="edit-actions">
+                    <a href="{{ url_for('dashboard') }}" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn-save">Save Changes</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+
+<!-- NOTIFICATION MODAL -->
+<div class="notif-overlay" id="notifModal">
+    <div class="notif-modal-v2">
+
+        <div class="notif-v2-header">
+            <div>
+                <h2>
+                    🔔 Notifications
+                    <span class="notif-count">
+                        {{
+                            (notif_reservations|length)
+                            +
+                            (feedback_notifications|length)
+                            +
+                            (announcements|length)
+                        }}
+                    </span>
+                </h2>
+                <p id="notifHeaderText">You have unread notifications</p>
+            </div>
+
+            <div class="notif-header-actions">
+                <button class="notif-read-btn" onclick="markAllNotificationsRead()">
+                    ✓ Mark all read
+                </button>
+
+                <button class="notif-close-btn" onclick="closeNotifModal()">
+                    ×
+                </button>
+            </div>
+        </div>
+
+        <div class="notif-tabs">
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+        </div>
+
+        <div class="notif-list">
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                <div class="notif-item unread" data-type="reservations">
+                    <div class="notif-icon">🖥</div>
+
+                    <div class="notif-content">
+                        <h4>Reservation {{ r.status }}</h4>
+                        <p>
+                            Your reservation at {{ r.lab }},
+                            PC #{{ r.pc_number }} is {{ r.status }}.
+                        </p>
+                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                    </div>
+
+                    <span class="notif-dot"></span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if feedback_notifications %}
+                {% for item in feedback_notifications %}
+                    {% set record = item.record %}
+
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                        <div class="notif-icon green">
+                            {% if item.submitted %}
+                                ⭐
+                            {% else %}
+                                ✅
+                            {% endif %}
+                        </div>
+
+                        <div class="notif-content">
+                            {% if item.submitted %}
+                                <h4>Feedback submitted</h4>
+                                <p>
+                                    Your feedback for Lab {{ record.sit_lab }}
+                                    has been submitted successfully.
+                                </p>
+                            {% else %}
+                                <h4>Feedback required</h4>
+                                <p>
+                                    Your sit-in session at Lab {{ record.sit_lab }}
+                                    has ended. Please submit your feedback.
+                                </p>
+                            {% endif %}
+
+                            <small>{{ record.logout_time }}</small>
+                        </div>
+
+                        {% if not item.submitted %}
+                            <span class="notif-dot"></span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="notif-item" data-type="announcements">
+                    <div class="notif-icon orange">📢</div>
+
+                    <div class="notif-content">
+                        <h4>New announcement from CCS Admin</h4>
+                        <p>"{{ item.content }}"</p>
+                        <small>{{ item.created_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if not notif_reservations and not feedback_notifications and not announcements %}
+            <div class="notif-empty-state">
+                <div class="notif-empty-icon">🔔</div>
+                <h3>No notifications yet</h3>
+                <p>Updates about reservations and announcements will appear here.</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<script>
+const NOTIF_READ_KEY = 'ccs_student_notifications_read';
+
+function openNotifModal() {
+    document.getElementById('notifModal').classList.add('show');
+}
+
+function closeNotifModal() {
+    document.getElementById('notifModal').classList.remove('show');
+}
+
+function filterNotifications(type, button) {
+    document.querySelectorAll('.notif-tabs button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    button.classList.add('active');
+
+    document.querySelectorAll('.notif-item').forEach(item => {
+        const itemType = item.dataset.type;
+
+        if (type === 'all') {
+            item.style.display = 'flex';
+        } else if (type === 'unread') {
+            item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
+        } else {
+            item.style.display = itemType === type ? 'flex' : 'none';
+        }
+    });
+}
+
+function applyNotificationsReadUI() {
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = 'none';
+    }
+
+    document.querySelectorAll('.notif-dot').forEach(dot => {
+        dot.remove();
+    });
+
+    document.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.classList.remove('unread');
+    });
+
+    const notifText = document.getElementById('notifHeaderText');
+    if (notifText) {
+        notifText.innerText = 'All caught up!';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+    if (notifCount) {
+        notifCount.innerText = '0';
+    }
+}
+
+function markAllNotificationsRead() {
+    localStorage.setItem(NOTIF_READ_KEY, 'yes');
+    applyNotificationsReadUI();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
+        applyNotificationsReadUI();
+    }
+});
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('notifModal');
+
+    if (e.target === modal) {
+        closeNotifModal();
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="dashboard-page">
+
+<nav class="navbar">
+    <a href="{{ url_for('dashboard') }}" class="brand">
+        College of Computer Studies Sit-in Monitoring System
+    </a>
+
+    <div class="nav-links">
+        <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
+            Notification
+            {% if notif_reservations|length + feedback_notifications|length > 0 %}
+                <span class="notif-alert-badge">!</span>
+            {% endif %}
+        </a>
+        <a href="{{ url_for('dashboard') }}">Home</a>
+        <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
+        <a href="{{ url_for('history') }}" class="nav-active">History</a>
+        <a href="{{ url_for('reservation') }}">Reservation</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="history-page-wrap">
+    <div class="history-hero">
+        <h1 class="history-title">History</h1>
+        <p class="history-subtitle">View your sit-in history and submit feedback after logout.</p>
+    </div>
+
+    <div class="history-stats-grid">
+        <div class="history-stat-card">
+            <div class="history-stat-label">Total History</div>
+            <div class="history-stat-value">{{ total_history }}</div>
+        </div>
+        <div class="history-stat-card">
+            <div class="history-stat-label">Logged Out Records</div>
+            <div class="history-stat-value">{{ logged_out_count }}</div>
+        </div>
+        <div class="history-stat-card">
+            <div class="history-stat-label">Pending Feedback</div>
+            <div class="history-stat-value">{{ pending_feedback_count }}</div>
+        </div>
+        <div class="history-stat-card">
+            <div class="history-stat-label">Submitted Feedback</div>
+            <div class="history-stat-value">{{ submitted_feedback_count }}</div>
+        </div>
+    </div>
+
+    <div class="history-panel">
+        <div class="records-toolbar">
+            <div class="records-toolbar-left">
+                <label for="entriesSelect" class="toolbar-label">Show</label>
+                <select id="entriesSelect" class="toolbar-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span class="toolbar-text">entries</span>
+            </div>
+
+            <div class="records-toolbar-right">
+                <label for="historySearch" class="toolbar-label">Search</label>
+                <input type="text" id="historySearch" class="toolbar-search" placeholder="Search history...">
+            </div>
+        </div>
+
+        <div class="admin-table-wrap records-table-wrap">
+            <table class="admin-table records-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Sit ID Number</th>
+                        <th>Purpose</th>
+                        <th>Sit Lab</th>
+                        <th>Session</th>
+                        <th>Status</th>
+                        <th>Login Time</th>
+                        <th>Logout Time</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td>{{ record.id }}</td>
+                        <td>{{ record.purpose }}</td>
+                        <td>{{ record.sit_lab }}</td>
+                        <td><span class="session-pill">{{ record.session }}</span></td>
+                        <td>
+                            {% if record.status == 'Logged Out' %}
+                                <span class="status-logout">Logged Out</span>
+                            {% else %}
+                                <span class="status-active">Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="time-cell">{{ record.login_time if record.login_time else '-' }}</td>
+                        <td class="time-cell">{{ record.logout_time if record.logout_time else '-' }}</td>
+                        <td>
+                            {% if record.status == 'Logged Out' %}
+                                {% if record.id in submitted_feedback_ids %}
+                                    <span class="feedback-chip feedback-chip-done">Feedback Submitted</span>
+                                {% else %}
+                                    <button
+                                        type="button"
+                                        class="feedback-btn"
+                                        onclick="openFeedbackModal('{{ record.id }}', '{{ record.purpose|escape }}', '{{ record.sit_lab|escape }}')"
+                                    >
+                                        Give Feedback
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="feedback-chip feedback-chip-muted">Available after logout</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-records-state">No history found.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="records-footer">
+            <span id="historyCountText">Showing {{ records|length }} record(s)</span>
+        </div>
+    </div>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="search-modal" id="feedbackModal">
+    <div class="search-modal-content sitin-modal feedback-modal-box">
+
+        <div class="search-modal-header">
+            <h3>Submit Feedback</h3>
+            <button type="button" class="close-btn" onclick="closeFeedbackModal()">×</button>
+        </div>
+
+        <form method="POST" id="feedbackForm">
+            <div class="sitin-modal-body">
+
+                <!-- Session context banner -->
+                <div class="feedback-context-banner">
+                    <div class="feedback-context-item">
+                        <div class="feedback-context-icon">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.5 2.5h9v1h-9zm0 3h7v1h-7zm0 3h5v1h-5z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <div class="feedback-context-text">
+                            <span class="feedback-context-label">Purpose</span>
+                            <span class="feedback-context-value" id="feedbackPurpose">—</span>
+                        </div>
+                    </div>
+
+                    <div class="feedback-context-divider"></div>
+
+                    <div class="feedback-context-item">
+                        <div class="feedback-context-icon">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                                <path d="M4 5h4M4 7.5h2.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="feedback-context-text">
+                            <span class="feedback-context-label">Lab</span>
+                            <span class="feedback-context-value" id="feedbackLab">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Star rating -->
+                <div class="field-wrap">
+                    <label class="field-label">Rating</label>
+                    <input type="hidden" name="rating" id="ratingInput" value="" required>
+                    <div class="star-rating-row" id="starRow">
+                        <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
+                        <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
+                        <button type="button" class="star-btn" data-value="3" aria-label="3 stars">★</button>
+                        <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
+                        <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
+                    </div>
+                    <span class="star-rating-label" id="starLabel">Select a rating</span>
+                </div>
+
+                <!-- Feedback textarea -->
+                <div class="field-wrap">
+                    <label class="field-label">Feedback</label>
+                    <textarea
+                        name="feedback_text"
+                        class="feedback-textarea feedback-modal-textarea"
+                        placeholder="Write your feedback here..."
+                        required
+                    ></textarea>
+                </div>
+
+            </div>
+
+            <div class="sitin-modal-footer">
+                <button type="button" class="btn-close-modal" onclick="closeFeedbackModal()">Close</button>
+                <button type="submit" class="btn-sitin">Submit Feedback</button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script>
+/* ── Table filter ── */
+const historySearch        = document.getElementById('historySearch');
+const historyEntriesSelect = document.getElementById('entriesSelect');
+const historyTable         = document.getElementById('historyTable');
+const historyCountText     = document.getElementById('historyCountText');
+
+function updateHistoryTable() {
+    const keyword = historySearch.value.toLowerCase().trim();
+    const limit   = parseInt(historyEntriesSelect.value, 10);
+    const rows    = Array.from(historyTable.querySelectorAll('tbody tr'));
+    let visible   = 0;
+
+    rows.forEach(row => {
+        if (row.querySelector('.empty-records-state')) return;
+        const text = row.innerText.toLowerCase();
+        if (text.includes(keyword) && visible < limit) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    historyCountText.textContent = `Showing ${visible} record(s)`;
+}
+
+historySearch.addEventListener('keyup', updateHistoryTable);
+historyEntriesSelect.addEventListener('change', updateHistoryTable);
+updateHistoryTable();
+
+/* ── Feedback modal open / close ── */
+function openFeedbackModal(recordId, purpose, lab) {
+    const modal = document.getElementById('feedbackModal');
+    const form  = document.getElementById('feedbackForm');
+
+    form.action = `/submit_feedback/${recordId}`;
+    document.getElementById('feedbackPurpose').textContent = purpose;
+    document.getElementById('feedbackLab').textContent     = lab;
+
+    resetStars();
+
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => modal.classList.add('show'));
+}
+
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    modal.classList.remove('show');
+    setTimeout(() => { modal.style.display = 'none'; }, 180);
+}
+
+window.addEventListener('click', function (e) {
+    const modal = document.getElementById('feedbackModal');
+    if (e.target === modal) closeFeedbackModal();
+});
+
+/* ── Star rating ── */
+const ratingLabels = ['', '1 — Poor', '2 — Fair', '3 — Good', '4 — Very Good', '5 — Excellent'];
+let currentRating  = 0;
+
+function resetStars() {
+    currentRating = 0;
+    document.getElementById('ratingInput').value     = '';
+    document.getElementById('starLabel').textContent = 'Select a rating';
+    document.querySelectorAll('.star-btn').forEach(btn => {
+        btn.classList.remove('active', 'hovered');
+    });
+}
+
+function applyStars(value, type) {
+    document.querySelectorAll('.star-btn').forEach(btn => {
+        const v = parseInt(btn.dataset.value);
+        btn.classList.remove('active', 'hovered');
+        if (type === 'hover') {
+            btn.classList.toggle('hovered', v <= value);
+        } else {
+            btn.classList.toggle('active', v <= value);
+        }
+    });
+
+    if (type === 'hover') {
+        document.getElementById('starLabel').textContent = ratingLabels[value];
+    } else {
+        currentRating = value;
+        document.getElementById('ratingInput').value     = value;
+        document.getElementById('starLabel').textContent = ratingLabels[value];
+    }
+}
+
+document.querySelectorAll('.star-btn').forEach(btn => {
+    const v = parseInt(btn.dataset.value);
+
+    btn.addEventListener('click',      () => applyStars(v, 'click'));
+    btn.addEventListener('mouseenter', () => applyStars(v, 'hover'));
+    btn.addEventListener('mouseleave', () => {
+        document.querySelectorAll('.star-btn').forEach(b => {
+            b.classList.remove('hovered');
+            b.classList.toggle('active', parseInt(b.dataset.value) <= currentRating);
+        });
+        document.getElementById('starLabel').textContent =
+            currentRating ? ratingLabels[currentRating] : 'Select a rating';
+    });
+});
+</script>
+
+<!-- NOTIFICATION MODAL -->
+<div class="notif-overlay" id="notifModal">
+    <div class="notif-modal-v2">
+
+        <div class="notif-v2-header">
+            <div>
+                <h2>
+                    🔔 Notifications
+                    <span class="notif-count">
+                        {{
+                            (notif_reservations|length)
+                            +
+                            (feedback_notifications|length)
+                            +
+                            (announcements|length)
+                        }}
+                    </span>
+                </h2>
+                <p id="notifHeaderText">You have unread notifications</p>
+            </div>
+
+            <div class="notif-header-actions">
+                <button class="notif-read-btn" onclick="markAllNotificationsRead()">
+                    ✓ Mark all read
+                </button>
+
+                <button class="notif-close-btn" onclick="closeNotifModal()">
+                    ×
+                </button>
+            </div>
+        </div>
+
+        <div class="notif-tabs">
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+        </div>
+
+        <div class="notif-list">
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                <div class="notif-item unread" data-type="reservations">
+                    <div class="notif-icon">🖥</div>
+
+                    <div class="notif-content">
+                        <h4>Reservation {{ r.status }}</h4>
+                        <p>
+                            Your reservation at {{ r.lab }},
+                            PC #{{ r.pc_number }} is {{ r.status }}.
+                        </p>
+                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                    </div>
+
+                    <span class="notif-dot"></span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if feedback_notifications %}
+                {% for item in feedback_notifications %}
+                    {% set record = item.record %}
+
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                        <div class="notif-icon green">
+                            {% if item.submitted %}
+                                ⭐
+                            {% else %}
+                                ✅
+                            {% endif %}
+                        </div>
+
+                        <div class="notif-content">
+                            {% if item.submitted %}
+                                <h4>Feedback submitted</h4>
+                                <p>
+                                    Your feedback for Lab {{ record.sit_lab }}
+                                    has been submitted successfully.
+                                </p>
+                            {% else %}
+                                <h4>Feedback required</h4>
+                                <p>
+                                    Your sit-in session at Lab {{ record.sit_lab }}
+                                    has ended. Please submit your feedback.
+                                </p>
+                            {% endif %}
+
+                            <small>{{ record.logout_time }}</small>
+                        </div>
+
+                        {% if not item.submitted %}
+                            <span class="notif-dot"></span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="notif-item" data-type="announcements">
+                    <div class="notif-icon orange">📢</div>
+
+                    <div class="notif-content">
+                        <h4>New announcement from CCS Admin</h4>
+                        <p>"{{ item.content }}"</p>
+                        <small>{{ item.created_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if not notif_reservations and not feedback_notifications and not announcements %}
+            <div class="notif-empty-state">
+                <div class="notif-empty-icon">🔔</div>
+                <h3>No notifications yet</h3>
+                <p>Updates about reservations and announcements will appear here.</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<script>
+const NOTIF_READ_KEY = 'ccs_student_notifications_read';
+
+function openNotifModal() {
+    document.getElementById('notifModal').classList.add('show');
+}
+
+function closeNotifModal() {
+    document.getElementById('notifModal').classList.remove('show');
+}
+
+function filterNotifications(type, button) {
+    document.querySelectorAll('.notif-tabs button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    button.classList.add('active');
+
+    document.querySelectorAll('.notif-item').forEach(item => {
+        const itemType = item.dataset.type;
+
+        if (type === 'all') {
+            item.style.display = 'flex';
+        } else if (type === 'unread') {
+            item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
+        } else {
+            item.style.display = itemType === type ? 'flex' : 'none';
+        }
+    });
+}
+
+function applyNotificationsReadUI() {
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = 'none';
+    }
+
+    document.querySelectorAll('.notif-dot').forEach(dot => {
+        dot.remove();
+    });
+
+    document.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.classList.remove('unread');
+    });
+
+    const notifText = document.getElementById('notifHeaderText');
+    if (notifText) {
+        notifText.innerText = 'All caught up!';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+    if (notifCount) {
+        notifCount.innerText = '0';
+    }
+}
+
+function markAllNotificationsRead() {
+    localStorage.setItem(NOTIF_READ_KEY, 'yes');
+    applyNotificationsReadUI();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
+        applyNotificationsReadUI();
+    }
+});
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('notifModal');
+
+    if (e.target === modal) {
+        closeNotifModal();
+    }
+});
+</script>
+
+</body>
+</html>

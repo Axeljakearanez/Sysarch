@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <a href="#" class="brand">College of Computer Studies Sit-in Monitoring System</a>
+
+    <div class="nav-links">
+       <a href="#home-section">Home</a>
+        
+        <a href="#about-section">About</a>
+        <a href="{{ url_for('login') }}" class="nav-active">Login</a>
+        <a href="{{ url_for('register') }}">Register</a>
+
+        <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+    </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="page-body" id="home-section">
+
+    <div class="login-container">
+
+        <div class="logo-side">
+            <div class="logo-bg">
+                <img src="{{ url_for('static', filename='ccs.webp') }}" alt="CCS Logo">
+                <h3 class="logo-title">College of Computer Studies</h3>
+                <p class="logo-tagline">Inceptum · Innovatio · Muneris</p>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <h2 class="form-title">Welcome Back</h2>
+            <p class="form-subtitle">Sign in to your student account</p>
+
+            {% if error %}
+                <div class="error-msg">⚠ {{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+
+                <div class="field-wrap">
+                    <label class="field-label">ID Number</label>
+                    <input type="text" name="id_number" placeholder="Enter a valid ID number">
+                </div>
+
+                <div class="field-wrap">
+                    <label class="field-label">Password</label>
+                    <input type="password" name="password" placeholder="Enter your password">
+                </div>
+
+                <div class="options-row">
+                    <label>
+                        <input type="checkbox" name="remember"> Remember me
+                    </label>
+
+                    <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn-login">Login</button>
+
+            </form>
+
+            <p class="register-link">
+                Don't have an account? <a href="{{ url_for('register') }}">Register</a>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- STUDENT LEADERBOARD BELOW LOGIN -->
+    <section class="login-leaderboard-section">
+
+        <div class="login-leaderboard-header">
+            <h1>🏆 Student Leaderboards</h1>
+            <p>Top students ranked by cleanliness, hours, and task completion</p>
+        </div>
+
+        <div class="login-leaderboard-weights">
+            <span class="weight-clean">🧹 Clean Workstation — 50%</span>
+            <span class="weight-hours">⏰ Total Hours — 30%</span>
+            <span class="weight-task">✅ Task Completed — 20%</span>
+        </div>
+
+        <div class="login-leaderboard-cards">
+
+    {% for student in top_students %}
+    <div class="login-leader-card
+    {% if loop.index == 1 %}top-one{% endif %}
+    {% if loop.index == 2 %}second-place{% endif %}
+    {% if loop.index == 3 %}third-place{% endif %}
+">
+
+        <div class="login-rank">
+            {% if loop.index == 1 %}
+                👑 1st
+            {% elif loop.index == 2 %}
+                🥈 2nd
+            {% elif loop.index == 3 %}
+                🥉 3rd
+            {% else %}
+                #{{ loop.index }}
+            {% endif %}
+        </div>
+<div class="login-leader-avatar">
+    {% if student.profile_pic and student.profile_pic != 'default.png' %}
+        <img
+            src="{{ url_for('static', filename='uploads/' ~ student.profile_pic) }}"
+            alt="{{ student.first_name }} {{ student.last_name }}"
+        >
+    {% else %}
+        {{ student.first_name[0] }}{{ student.last_name[0] }}
+    {% endif %}
+</div>
+
+        <h2>{{ student.first_name }} {{ student.last_name }}</h2>
+
+        <p>{{ student.course }} · {{ student.course_level }}</p>
+
+        <div class="login-leader-score">
+            {{ student.leaderboard_points }}
+        </div>
+
+        <small>SCORE</small>
+
+        <div class="login-leader-stats">
+
+            <span class="raw-stat">
+                🎯 {{ student.raw_points|round(0, 'floor')|int }} pts
+            </span>
+
+            {% set total_minutes = ((student.total_hours or 0) * 60)|int %}
+            {% set hours = total_minutes // 60 %}
+            {% set minutes = total_minutes % 60 %}
+
+            <span class="hours-stat">
+                ⏱
+                {% if hours > 0 %}
+                    {{ hours }}h {{ minutes }}m
+                {% else %}
+                    {{ minutes }}m
+                {% endif %}
+            </span>
+
+        </div>
+
+    </div>
+    {% else %}
+        <p class="no-leaderboard-data">
+            No leaderboard data yet.
+        </p>
+    {% endfor %}
+
+</div>
+    </section>
+
+</div>
+<section class="about-section" id="about-section">
+
+    <div class="about-card">
+
+        <div class="about-left">
+            <span class="about-label">About the System</span>
+
+            <h2>CCS Sit-in Monitoring System</h2>
+
+            <p>
+                The CCS Sit-in Monitoring System is designed to help monitor
+                and manage student sit-in sessions, reservations, evaluations,
+                and laboratory activities across the entire campus in a more
+                organized and efficient way.
+            </p>
+
+            <p>
+                The system allows students from different colleges and departments
+                within the campus to participate in laboratory sit-ins, reserve
+                available computer laboratories, monitor remaining sessions,
+                and track participation records in real-time.
+            </p>
+        </div>
+
+        <div class="about-right">
+
+            <div class="about-feature">
+                <span>🧑‍💻</span>
+                <div>
+                    <h3>Student Monitoring</h3>
+                    <p>Track active and completed sit-in sessions from students
+    across different colleges and departments.</p>
+                </div>
+            </div>
+
+            <div class="about-feature">
+                <span>📅</span>
+                <div>
+                    <h3>Reservation Management</h3>
+                    <p>Manage laboratory reservations, schedules,
+    and available computer workstations efficiently.</p>
+                </div>
+            </div>
+
+            <div class="about-feature">
+                <span>🏆</span>
+                <div>
+                    <h3>Leaderboard System</h3>
+                    <p> Recognize active and responsible students through
+    session evaluations, participation, and laboratory activities.</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+</body>
+</html>

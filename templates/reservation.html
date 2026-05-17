@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="dashboard-page">
+
+<nav class="navbar">
+    <a href="{{ url_for('dashboard') }}" class="brand">
+        College of Computer Studies Sit-in Monitoring System
+    </a>
+
+    <div class="nav-links">
+        <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
+            Notification
+            {% if notif_reservations|length + feedback_notifications|length > 0 %}
+                <span class="notif-alert-badge">!</span>
+            {% endif %}
+        </a>
+        <a href="{{ url_for('dashboard') }}">Home</a>
+        <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
+        <a href="{{ url_for('history') }}">History</a>
+        <a href="{{ url_for('reservation') }}" class="nav-active">Reservation</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">{{ message }}</div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+        const a = document.getElementById('flashAlert');
+        if (a) a.classList.add('hide');
+      }, 2000);
+      setTimeout(() => {
+        const a = document.getElementById('flashAlert');
+        if (a) a.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="rsv-page-wrap">
+
+    <div class="rsv-page-hero">
+        <h1 class="rsv-page-title">Lab Reservation</h1>
+        <p class="rsv-page-subtitle">Book your PC slot in advance</p>
+    </div>
+
+    <div class="rsv-layout">
+
+        <div class="rsv-wizard-card">
+
+            <div class="rsv-wizard-header">
+                <div class="rsv-wizard-title-row">
+                    <span class="rsv-wizard-icon">🖥️</span>
+                    <div>
+                        <div class="rsv-wizard-name">Lab Reservation</div>
+                        <div class="rsv-wizard-sub">Book your PC slot in advance</div>
+                    </div>
+                </div>
+
+                <div class="rsv-steps" id="rsvSteps">
+                    <div class="rsv-step active" data-step="1">
+                        <div class="rsv-step-circle">1</div>
+                        <div class="rsv-step-label">Choose Date</div>
+                    </div>
+                    <div class="rsv-step-line"></div>
+                    <div class="rsv-step" data-step="2">
+                        <div class="rsv-step-circle">2</div>
+                        <div class="rsv-step-label">Choose Lab</div>
+                    </div>
+                    <div class="rsv-step-line"></div>
+                    <div class="rsv-step" data-step="3">
+                        <div class="rsv-step-circle">3</div>
+                        <div class="rsv-step-label">Time Slot</div>
+                    </div>
+                    <div class="rsv-step-line"></div>
+                    <div class="rsv-step" data-step="4">
+                        <div class="rsv-step-circle">4</div>
+                        <div class="rsv-step-label">Choose PC</div>
+                    </div>
+                    <div class="rsv-step-line"></div>
+                    <div class="rsv-step" data-step="5">
+                        <div class="rsv-step-circle">5</div>
+                        <div class="rsv-step-label">Confirm</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rsv-wizard-body">
+<div class="rsv-step-body active" id="stepBody1">
+    <div class="rsv-step-section-label">📅 SELECT YOUR PREFERRED DATE</div>
+
+    <div class="rsv-date-picker-wrap">
+        <div class="rsv-date-icon">📅</div>
+        <div class="rsv-date-label">PICK A DATE</div>
+
+        <input
+            type="date"
+            id="pickDate"
+            class="rsv-date-input"
+            min=""
+        >
+
+        <button type="button" class="rsv-today-btn" onclick="setTodayDate()">
+            Use Today
+        </button>
+
+        <div class="rsv-date-display" id="dateDisplay">
+            No date selected
+        </div>
+    </div>
+
+    <div class="rsv-hint">
+        💡 Select a date first so we can show you only labs that have available slots on that day.
+    </div>
+
+    <div class="rsv-step-footer">
+        <div></div>
+        <button class="rsv-btn-next" type="button" onclick="goStep(2)">
+            Next →
+        </button>
+    </div>
+</div>
+
+                <div class="rsv-step-body" id="stepBody2">
+                    <div class="rsv-step-section-label">🖥️ CHOOSE A LABORATORY</div>
+
+                    <button class="rsv-search-btn" id="searchLabsBtn" type="button" onclick="loadLabs()">
+                        <span id="searchBtnText">
+                            <span id="searchBtnIcon">🔍</span> Search Available Labs
+                        </span>
+                        <span id="searchBtnLoader" style="display:none;">
+                            <span class="rsv-mini-spinner"></span> Searching...
+                        </span>
+                    </button>
+
+                    <div id="labsGrid" class="rsv-labs-grid" style="display:none"></div>
+
+                    <div class="rsv-step-footer">
+                        <button class="rsv-btn-back" type="button" onclick="goStep(1)">← Back</button>
+                        <button class="rsv-btn-next" type="button" onclick="goStep(3)" id="nextStep2" disabled>Next →</button>
+                    </div>
+                </div>
+
+                <div class="rsv-step-body" id="stepBody3">
+                    <div class="rsv-step-section-label">⏰ SELECT A TIME SLOT</div>
+                    <div class="rsv-context-bar" id="timeContextBar">—</div>
+                    <div id="timeSlotsGrid" class="rsv-timeslots-grid"></div>
+                    <div class="rsv-step-footer">
+                        <button class="rsv-btn-back" type="button" onclick="goStep(2)">← Back</button>
+                        <button class="rsv-btn-next" type="button" onclick="goStep(4)" id="nextStep3" disabled>Next →</button>
+                    </div>
+                </div>
+
+                <div class="rsv-step-body" id="stepBody4">
+                    <div class="rsv-step-section-label">💻 SELECT YOUR PC</div>
+                    <div class="rsv-context-bar" id="pcContextBar">—</div>
+                    <div class="rsv-pc-legend">
+                        <span class="rsv-legend-dot available"></span> Available
+                        <span class="rsv-legend-dot reserved"></span> Reserved
+                        <span class="rsv-legend-dot maintenance"></span> Maintenance
+                        <span class="rsv-legend-dot chosen"></span> Your Choice
+                    </div>
+                    <div id="pcGrid" class="rsv-pc-grid"></div>
+                    <div class="rsv-step-footer">
+                        <button class="rsv-btn-back" type="button" onclick="goStep(3)">← Back</button>
+                        <button class="rsv-btn-next" type="button" onclick="goStep(5)" id="nextStep4" disabled>Next →</button>
+                    </div>
+                </div>
+
+                <div class="rsv-step-body" id="stepBody5">
+                    <div class="rsv-step-section-label">✅ CONFIRM YOUR RESERVATION</div>
+                    <div class="rsv-confirm-card">
+                        <div class="rsv-confirm-row">
+                            <span class="rsv-confirm-icon">📅</span>
+                            <span class="rsv-confirm-key">DATE</span>
+                            <span class="rsv-confirm-val" id="confirmDate">—</span>
+                        </div>
+                        <div class="rsv-confirm-row">
+                            <span class="rsv-confirm-icon">🖥️</span>
+                            <span class="rsv-confirm-key">LABORATORY</span>
+                            <span class="rsv-confirm-val" id="confirmLab">—</span>
+                        </div>
+                        <div class="rsv-confirm-row">
+                            <span class="rsv-confirm-icon">⏰</span>
+                            <span class="rsv-confirm-key">TIME SLOT</span>
+                            <span class="rsv-confirm-val" id="confirmTime">—</span>
+                        </div>
+                        <div class="rsv-confirm-row">
+                            <span class="rsv-confirm-icon">💻</span>
+                            <span class="rsv-confirm-key">PC NUMBER</span>
+                            <span class="rsv-confirm-val" id="confirmPC">—</span>
+                        </div>
+                    </div>
+                    <div class="rsv-warning">⚠️ Please double-check your reservation details. Once confirmed, you can cancel from the reservations list.</div>
+                    <div class="rsv-step-footer">
+                        <button class="rsv-btn-back" type="button" onclick="goStep(4)">← Back</button>
+                        <button class="rsv-btn-confirm" type="button" onclick="submitReservation()">✓ Confirm Reservation</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="rsv-my-reservations">
+            <div class="rsv-my-header">
+                <span>📅</span> My Reservations
+            </div>
+
+            <div id="myReservationsList">
+                {% if reservations %}
+                    {% for r in reservations[:5] %}
+                    <div class="rsv-item">
+                        <div class="rsv-item-left">
+                            <div class="rsv-item-title">{{ r.lab }} — PC #{{ r.pc_number }}</div>
+                            <div class="rsv-item-meta">{{ r.date }} | {{ r.time_slot }}</div>
+                        </div>
+                        <div class="rsv-item-right">
+                            {% if r.status == 'Approved' %}
+                                <span class="rsv-status rsv-status-approved">Approved</span>
+                                <form method="POST" action="{{ url_for('cancel_reservation', reservation_id=r.id) }}" style="display:inline">
+                                    <button type="submit" class="rsv-cancel-btn" onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                                </form>
+                            {% elif r.status == 'Pending' %}
+                                <span class="rsv-status rsv-status-pending">Pending</span>
+                                <form method="POST" action="{{ url_for('cancel_reservation', reservation_id=r.id) }}" style="display:inline">
+                                    <button type="submit" class="rsv-cancel-btn" onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                                </form>
+                            {% else %}
+                                <span class="rsv-status rsv-status-cancelled">Cancelled</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if reservations|length > 5 %}
+                    <div class="rsv-more-link">+{{ reservations|length - 5 }} more reservations</div>
+                    {% endif %}
+                {% else %}
+                    <div class="rsv-empty-state">No reservations yet.</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('submit_reservation') }}" id="reservationForm" style="display:none">
+    <input type="hidden" name="date" id="formDate">
+    <input type="hidden" name="lab" id="formLab">
+    <input type="hidden" name="time_slot" id="formTimeSlot">
+    <input type="hidden" name="pc_number" id="formPC">
+</form>
+
+<div class="rsv-loading-overlay" id="rsvLoadingOverlay" style="display:none;">
+    <div class="rsv-loading-card">
+        <div class="rsv-loading-icon-wrap">
+            <div class="rsv-loading-spinner"></div>
+            <div class="rsv-loading-icon">⏳</div>
+        </div>
+        <div class="rsv-loading-title" id="rsvLoadingTitle">Loading...</div>
+        <div class="rsv-loading-text" id="rsvLoadingText">Please wait a moment.</div>
+    </div>
+</div>
+
+<script>
+let state = {
+    date: '',
+    lab: '',
+    slot: '',
+    pc: null,
+    currentStep: 1
+};
+
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function showReservationLoader(title = 'Loading...', text = 'Please wait a moment.', icon = '⏳') {
+    const overlay = document.getElementById('rsvLoadingOverlay');
+    const titleEl = document.getElementById('rsvLoadingTitle');
+    const textEl = document.getElementById('rsvLoadingText');
+    const iconEl = document.querySelector('.rsv-loading-icon');
+
+    if (!overlay) return;
+
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = text;
+    if (iconEl) iconEl.textContent = icon;
+
+    overlay.style.display = 'flex';
+
+    overlay.style.opacity = '0';
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+    });
+}
+
+function hideReservationLoader() {
+    const overlay = document.getElementById('rsvLoadingOverlay');
+    if (!overlay) return;
+
+    overlay.style.opacity = '0';
+
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 200);
+}
+
+function goStep(n) {
+    if (n === 2 && !state.date) {
+        alert('Please select a date first.');
+        return;
+    }
+    if (n === 3 && !state.lab) {
+        alert('Please select a lab first.');
+        return;
+    }
+    if (n === 4 && !state.slot) {
+        alert('Please select a time slot first.');
+        return;
+    }
+    if (n === 5 && !state.pc) {
+        alert('Please select a PC first.');
+        return;
+    }
+
+    document.querySelectorAll('.rsv-step-body').forEach(b => b.classList.remove('active'));
+    document.getElementById('stepBody' + n).classList.add('active');
+
+    updateStepIndicators(n);
+    state.currentStep = n;
+
+    if (n === 3) renderTimeSlots();
+    if (n === 4) renderPCGrid();
+    if (n === 5) renderConfirm();
+}
+
+function updateStepIndicators(current) {
+    document.querySelectorAll('.rsv-step').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.remove('active', 'done');
+        if (s < current) el.classList.add('done');
+        if (s === current) el.classList.add('active');
+    });
+
+    document.querySelectorAll('.rsv-step-line').forEach((line, i) => {
+        line.classList.toggle('done', i + 1 < current);
+    });
+}
+
+const pickDate = document.getElementById('pickDate');
+const today = new Date().toISOString().split('T')[0];
+pickDate.setAttribute('min', today);
+
+pickDate.addEventListener('change', () => {
+    state.date = pickDate.value;
+    state.lab = '';
+    state.slot = '';
+    state.pc = null;
+
+    document.getElementById('nextStep2').disabled = true;
+    document.getElementById('nextStep3').disabled = true;
+    document.getElementById('nextStep4').disabled = true;
+
+    document.getElementById('labsGrid').innerHTML = '';
+    document.getElementById('timeSlotsGrid').innerHTML = '';
+    document.getElementById('pcGrid').innerHTML = '';
+    document.getElementById('labsGrid').style.display = 'none';
+
+    if (state.date) {
+        const d = new Date(state.date + 'T00:00:00');
+        document.getElementById('dateDisplay').textContent =
+            '📅 ' + d.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        document.getElementById('dateDisplay').style.color = '#4B2D8F';
+    } else {
+        document.getElementById('dateDisplay').textContent = 'No date selected';
+        document.getElementById('dateDisplay').style.color = '';
+    }
+});
+
+async function loadLabs() {
+    if (!state.date) {
+        alert('Please select a date first.');
+        return;
+    }
+
+    const btn = document.getElementById('searchLabsBtn');
+    const grid = document.getElementById('labsGrid');
+    const btnText = document.getElementById('searchBtnText');
+    const btnLoader = document.getElementById('searchBtnLoader');
+
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'inline-flex';
+
+    showReservationLoader(
+        'Searching Laboratories',
+        'We are checking available labs for your selected date.'
+    );
+
+    const start = Date.now();
+
+    try {
+        const response = await fetch(`/api/reservation/labs?date=${encodeURIComponent(state.date)}`);
+        const data = await response.json();
+
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) {
+    await wait(3000 - elapsed);
+}
+
+        if (!response.ok) {
+            alert(data.error || 'Failed to load labs.');
+            return;
+        }
+
+        grid.style.display = 'grid';
+        grid.innerHTML = '';
+
+        if (!data.labs || data.labs.length === 0) {
+            grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">No labs available for this date.</div>`;
+            return;
+        }
+
+        data.labs.forEach(lab => {
+            const card = document.createElement('div');
+            const available = Number(lab.available_count) > 0;
+
+            card.className = 'rsv-lab-card' + (state.lab === lab.id ? ' selected' : '');
+            card.innerHTML = `
+    <div class="rsv-lab-icon">🖥️</div>
+    <div class="rsv-lab-name">${lab.name}</div>
+    <div class="rsv-lab-pcs">${lab.available_count} PCs Usable</div>
+    <div class="rsv-lab-status ${available ? 'available' : 'full'}">
+       ${available ? '● Live PC availability' : '● Full'}
+    </div>
+`;
+
+            if (available) {
+                card.onclick = () => selectLab(lab.id);
+            } else {
+                card.style.opacity = '0.65';
+                card.style.cursor = 'not-allowed';
+            }
+
+            grid.appendChild(card);
+        });
+    } catch (error) {
+        alert('Failed to connect to the server.');
+    } finally {
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+        hideReservationLoader();
+    }
+}
+
+function selectLab(labId) {
+    state.lab = labId;
+    state.slot = '';
+    state.pc = null;
+
+    document.querySelectorAll('.rsv-lab-card').forEach(card => {
+        const name = card.querySelector('.rsv-lab-name');
+        card.classList.toggle('selected', name && name.textContent === labId);
+    });
+
+    document.getElementById('nextStep2').disabled = false;
+    document.getElementById('nextStep3').disabled = true;
+    document.getElementById('nextStep4').disabled = true;
+}
+
+async function renderTimeSlots() {
+    const bar = document.getElementById('timeContextBar');
+    const grid = document.getElementById('timeSlotsGrid');
+
+    bar.innerHTML = `<span class="rsv-ctx-lab">🖥️ ${state.lab}</span> | <span class="rsv-ctx-date">📅 ${state.date}</span>`;
+    grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">Loading time slots...</div>`;
+
+    showReservationLoader(
+        'Loading Time Slots',
+        'Please wait while we check available schedules.'
+    );
+
+    const start = Date.now();
+
+    try {
+        const response = await fetch(
+            `/api/reservation/time-slots?date=${encodeURIComponent(state.date)}&lab=${encodeURIComponent(state.lab)}`
+        );
+        const data = await response.json();
+
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) {
+            await wait(3000 - elapsed);
+        }
+
+        if (!response.ok) {
+            grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">${data.error || 'Failed to load time slots.'}</div>`;
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        if (!data.time_slots || data.time_slots.length === 0) {
+            grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">No time slots found.</div>`;
+            return;
+        }
+
+        data.time_slots.forEach(slot => {
+            const card = document.createElement('div');
+            const full = slot.is_full || slot.is_past;
+
+            card.className = 'rsv-slot-card' + (state.slot === slot.time_slot ? ' selected' : '');
+            card.innerHTML = `
+                <div class="rsv-slot-time">⏱ ${slot.time_slot}</div>
+                <div class="rsv-slot-session">2-hour session</div>
+               <div class="rsv-slot-free">
+    ${slot.is_past ? '● Time already passed' : full ? '● Full' : `● ${slot.available_count} PCs free`}
+</div>
+            `;
+
+            if (!full) {
+                card.onclick = () => selectSlot(slot.time_slot, card);
+            } else {
+                card.style.opacity = '0.65';
+                card.style.cursor = 'not-allowed';
+            }
+
+            grid.appendChild(card);
+        });
+    } catch (error) {
+        grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">Failed to connect to the server.</div>`;
+    } finally {
+        hideReservationLoader();
+    }
+}
+
+function selectSlot(slot, el) {
+    state.slot = slot;
+    state.pc = null;
+
+    document.querySelectorAll('.rsv-slot-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+
+    document.getElementById('nextStep3').disabled = false;
+    document.getElementById('nextStep4').disabled = true;
+}
+
+async function renderPCGrid() {
+    const bar = document.getElementById('pcContextBar');
+    const grid = document.getElementById('pcGrid');
+
+    bar.innerHTML = `
+        <span class="rsv-ctx-lab">🖥️ ${state.lab}</span> |
+        <span class="rsv-ctx-date">📅 ${state.date}</span> |
+        <span class="rsv-ctx-time">⏰ ${state.slot}</span>
+    `;
+
+    grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">Loading PCs...</div>`;
+
+    showReservationLoader(
+        'Loading PC Stations',
+        'We are checking which computers are available for your chosen schedule.'
+    );
+
+    const start = Date.now();
+
+    try {
+        const response = await fetch(
+            `/api/reservation/pcs?date=${encodeURIComponent(state.date)}&lab=${encodeURIComponent(state.lab)}&time_slot=${encodeURIComponent(state.slot)}`
+        );
+        const data = await response.json();
+
+        const elapsed = Date.now() - start;
+       if (elapsed < 3000) {
+            await wait(3000 - elapsed);
+        }   
+
+        if (!response.ok) {
+            grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">${data.error || 'Failed to load PCs.'}</div>`;
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        if (!data.pcs || data.pcs.length === 0) {
+            grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">No PCs found.</div>`;
+            return;
+        }
+
+        data.pcs.forEach(pc => {
+            const cell = document.createElement('div');
+            const isChosen = state.pc === pc.pc_number;
+
+            let cls = 'rsv-pc-cell';
+            if (isChosen) cls += ' chosen';
+            else if (pc.status === 'Maintenance') cls += ' maintenance';
+            else if (pc.status === 'Reserved') cls += ' reserved';
+            else cls += ' available';
+
+            let tag = 'Available';
+            if (pc.status === 'Maintenance') tag = 'Maintenance';
+            if (pc.status === 'Reserved') tag = 'Reserved';
+            if (isChosen) tag = 'Selected';
+
+            cell.className = cls;
+            cell.innerHTML = `
+                <span class="rsv-pc-icon">💻</span>
+                <span class="rsv-pc-num">PC ${pc.pc_number}</span>
+                <span class="rsv-pc-tag">${tag}</span>
+            `;
+
+            if (pc.status === 'Available') {
+                cell.onclick = () => selectPC(pc.pc_number);
+            }
+
+            grid.appendChild(cell);
+        });
+    } catch (error) {
+        grid.innerHTML = `<div class="rsv-empty-state" style="grid-column: 1 / -1;">Failed to connect to the server.</div>`;
+    } finally {
+        hideReservationLoader();
+    }
+}
+
+function selectPC(num) {
+    state.pc = num;
+    renderPCGrid();
+    document.getElementById('nextStep4').disabled = false;
+}
+
+function renderConfirm() {
+    document.getElementById('confirmDate').textContent = state.date;
+    document.getElementById('confirmLab').textContent = state.lab;
+    document.getElementById('confirmTime').textContent = state.slot;
+    document.getElementById('confirmPC').textContent = 'PC #' + state.pc;
+}
+
+async function submitReservation() {
+    if (!state.date || !state.lab || !state.slot || !state.pc) {
+        alert('Please complete your reservation first.');
+        return;
+    }
+
+    if (!confirm('Confirm reservation?')) {
+        return;
+    }
+
+    showReservationLoader(
+        'Submitting Reservation',
+        'Saving your reservation, please wait...'
+    );
+
+    // ⏳ fake delay (3 seconds)
+    await wait(3000);
+
+    document.getElementById('formDate').value = state.date;
+    document.getElementById('formLab').value = state.lab;
+    document.getElementById('formTimeSlot').value = state.slot;
+    document.getElementById('formPC').value = state.pc;
+
+    document.getElementById('reservationForm').submit();
+}
+// set today button
+function setTodayDate() {
+    const today = new Date().toISOString().split('T')[0];
+    const pickDate = document.getElementById('pickDate');
+
+    pickDate.value = today;
+    pickDate.dispatchEvent(new Event('change'));
+}
+
+// display selected date nicely
+document.getElementById('pickDate').addEventListener('change', function () {
+    const display = document.getElementById('dateDisplay');
+
+    if (!this.value) {
+        display.textContent = "No date selected";
+        return;
+    }
+
+    const date = new Date(this.value);
+    display.textContent = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+});
+</script>
+
+<!-- NOTIFICATION MODAL -->
+<div class="notif-overlay" id="notifModal">
+    <div class="notif-modal-v2">
+
+        <div class="notif-v2-header">
+            <div>
+                <h2>
+                    🔔 Notifications
+                    <span class="notif-count">
+                        {{
+                            (notif_reservations|length)
+                            +
+                            (feedback_notifications|length)
+                            +
+                            (announcements|length)
+                        }}
+                    </span>
+                </h2>
+                <p id="notifHeaderText">You have unread notifications</p>
+            </div>
+
+            <div class="notif-header-actions">
+                <button class="notif-read-btn" onclick="markAllNotificationsRead()">
+                    ✓ Mark all read
+                </button>
+
+                <button class="notif-close-btn" onclick="closeNotifModal()">
+                    ×
+                </button>
+            </div>
+        </div>
+
+        <div class="notif-tabs">
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+        </div>
+
+        <div class="notif-list">
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                <div class="notif-item unread" data-type="reservations">
+                    <div class="notif-icon">🖥</div>
+
+                    <div class="notif-content">
+                        <h4>Reservation {{ r.status }}</h4>
+                        <p>
+                            Your reservation at {{ r.lab }},
+                            PC #{{ r.pc_number }} is {{ r.status }}.
+                        </p>
+                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                    </div>
+
+                    <span class="notif-dot"></span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if feedback_notifications %}
+                {% for item in feedback_notifications %}
+                    {% set record = item.record %}
+
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                        <div class="notif-icon green">
+                            {% if item.submitted %}
+                                ⭐
+                            {% else %}
+                                ✅
+                            {% endif %}
+                        </div>
+
+                        <div class="notif-content">
+                            {% if item.submitted %}
+                                <h4>Feedback submitted</h4>
+                                <p>
+                                    Your feedback for Lab {{ record.sit_lab }}
+                                    has been submitted successfully.
+                                </p>
+                            {% else %}
+                                <h4>Feedback required</h4>
+                                <p>
+                                    Your sit-in session at Lab {{ record.sit_lab }}
+                                    has ended. Please submit your feedback.
+                                </p>
+                            {% endif %}
+
+                            <small>{{ record.logout_time }}</small>
+                        </div>
+
+                        {% if not item.submitted %}
+                            <span class="notif-dot"></span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="notif-item" data-type="announcements">
+                    <div class="notif-icon orange">📢</div>
+
+                    <div class="notif-content">
+                        <h4>New announcement from CCS Admin</h4>
+                        <p>"{{ item.content }}"</p>
+                        <small>{{ item.created_at }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if not notif_reservations and not feedback_notifications and not announcements %}
+            <div class="notif-empty-state">
+                <div class="notif-empty-icon">🔔</div>
+                <h3>No notifications yet</h3>
+                <p>Updates about reservations and announcements will appear here.</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<script>
+const NOTIF_READ_KEY = 'ccs_student_notifications_read';
+
+function openNotifModal() {
+    document.getElementById('notifModal').classList.add('show');
+}
+
+function closeNotifModal() {
+    document.getElementById('notifModal').classList.remove('show');
+}
+
+function filterNotifications(type, button) {
+    document.querySelectorAll('.notif-tabs button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    button.classList.add('active');
+
+    document.querySelectorAll('.notif-item').forEach(item => {
+        const itemType = item.dataset.type;
+
+        if (type === 'all') {
+            item.style.display = 'flex';
+        } else if (type === 'unread') {
+            item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
+        } else {
+            item.style.display = itemType === type ? 'flex' : 'none';
+        }
+    });
+}
+
+function applyNotificationsReadUI() {
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = 'none';
+    }
+
+    document.querySelectorAll('.notif-dot').forEach(dot => {
+        dot.remove();
+    });
+
+    document.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.classList.remove('unread');
+    });
+
+    const notifText = document.getElementById('notifHeaderText');
+    if (notifText) {
+        notifText.innerText = 'All caught up!';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+    if (notifCount) {
+        notifCount.innerText = '0';
+    }
+}
+
+function markAllNotificationsRead() {
+    localStorage.setItem(NOTIF_READ_KEY, 'yes');
+    applyNotificationsReadUI();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
+        applyNotificationsReadUI();
+    }
+});
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('notifModal');
+
+    if (e.target === modal) {
+        closeNotifModal();
+    }
+});
+</script>
+
+</body>
+</html>

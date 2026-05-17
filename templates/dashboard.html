@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body class="dashboard-page">
+
+<nav class="navbar">
+    <a href="{{ url_for('dashboard') }}" class="brand">
+        College of Computer Studies Sit-in Monitoring System
+    </a>
+
+    <div class="nav-links">
+        <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
+    Notification
+
+    {% if notif_reservations|length + feedback_notifications|length > 0 %}
+        <span class="notif-alert-badge">!</span>
+    {% endif %}
+</a>
+        <a href="{{ url_for('dashboard') }}" class="nav-active">Home</a>
+        <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
+        <a href="{{ url_for('history') }}">History</a>
+        <a href="{{ url_for('reservation') }}">Reservation</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    
+            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+        </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="flash-alert flash-{{ category }}" id="flashAlert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.classList.add('hide');
+      }, 2000);
+
+      setTimeout(() => {
+        const alertBox = document.getElementById('flashAlert');
+        if (alertBox) alertBox.remove();
+      }, 2500);
+    </script>
+  {% endif %}
+{% endwith %}
+
+<div class="dashboard-wrapper">
+    <div class="dashboard-container">
+
+        <div class="dash-card">
+            <div class="dash-card-header">Student Information</div>
+            <div class="dash-card-body">
+                <div class="student-avatar-wrap">
+                    {% if student.profile_pic and student.profile_pic != 'default.png' %}
+                        <img
+                            src="{{ url_for('static', filename='uploads/' + student.profile_pic) }}"
+                            alt="Profile Picture"
+                            class="student-avatar-img"
+                        >
+                    {% else %}
+                        <div class="student-avatar">
+                            {{ student.first_name[0] }}{{ student.last_name[0] }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="student-name-block">
+                    <h3>{{ student.first_name }} {{ student.last_name }}</h3>
+                    <p>{{ student.course }} - Year {{ student.course_level }}</p>
+                </div>
+
+                <hr class="divider">
+
+                <div class="student-details">
+                    <div class="info-item">
+                        <span class="info-label">Name</span>
+                        <span class="info-value">
+                            {{ student.first_name }} {{ student.middle_name }} {{ student.last_name }}
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Course</span>
+                        <span class="info-value">{{ student.course }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Year</span>
+                        <span class="info-value">{{ student.course_level }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">{{ student.email }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Address</span>
+                        <span class="info-value">{{ student.address if student.address else 'Not set' }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Remaining Sessions</span>
+                        <span class="info-value">{{ student.remaining_sessions }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-card announcement-card">
+            <div class="dash-card-header">📢 Announcement</div>
+            <div class="dash-card-body">
+                {% for announcement in announcements %}
+                    <div class="announcement-item">
+                        <div class="announcement-meta">
+                            {{ announcement.author }} | {{ announcement.created_at }}
+                        </div>
+                        <div class="announcement-box">
+                            {{ announcement.content }}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="announcement-item">
+                        <div class="announcement-box empty-box">No announcements yet.</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">Rules and Regulation</div>
+            <div class="dash-card-body rules-body">
+                <h3>University of Cebu</h3>
+                <h4>College of Information & Computer Studies</h4>
+                <h5>LABORATORY RULES AND REGULATIONS</h5>
+
+                <p>
+                    To avoid embarrassment and maintain camaraderie with your friends and superiors
+                    at our laboratories, please observe the following:
+                </p>
+
+                <ol class="rules-list">
+                    <li>
+                        Maintain silence, proper decorum, and discipline inside the laboratory.
+                        Mobile phones, walkmans and other personal pieces of equipment must be switched off.
+                    </li>
+                    <li>
+                        Games are not allowed inside the lab. This includes computer-related games,
+                        card games and other games that may disturb the operation of the lab.
+                    </li>
+                    <li>
+                        Surfing the Internet is allowed only with the permission of the instructor.
+                        Downloading and installing of software are strictly prohibited.
+                    </li>
+                    <li>
+                        Getting access to other websites not related to the course
+                        is not allowed unless approved by the instructor.
+                    </li>
+                    <li>
+                        Deleting computer files and changing computer settings is a major offense.
+                    </li>
+                    <li>
+                        Observe proper decorum while inside the laboratory.
+                    </li>
+                    <li>
+                        No vandalism and unnecessary noise.
+                    </li>
+                    <li>
+                        Report any equipment malfunction or damage immediately to the instructor or lab personnel.
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- NOTIFICATION MODAL -->
+
+<div class="notif-overlay" id="notifModal">
+
+    <div class="notif-modal-v2">
+
+        <div class="notif-v2-header">
+
+            <div>
+                <h2>
+                    🔔 Notifications
+
+                    <span class="notif-count">
+                        {{
+                            (notif_reservations|length)
+                            +
+                            (feedback_notifications|length)
+                            +
+                            (announcements|length)
+                        }}
+                    </span>
+                </h2>
+
+                <p>
+                    You have unread notifications
+                </p>
+            </div>
+
+            <div class="notif-header-actions">
+
+                <button class="notif-read-btn" onclick="markAllNotificationsRead()">
+    ✓ Mark all read
+</button>
+
+                <button
+                    class="notif-close-btn"
+                    onclick="closeNotifModal()"
+                >
+                    ×
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="notif-tabs">
+
+            <button class="active">
+                All
+            </button>
+
+            <button>
+                Unread
+            </button>
+
+            <button>
+                Announcements
+            </button>
+
+            <button>
+                Reservations
+            </button>
+
+        </div>
+
+        <div class="notif-list">
+
+            <!-- RESERVATIONS -->
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+
+                <div class="notif-item unread">
+
+                    <div class="notif-icon">
+                        🖥
+                    </div>
+
+                    <div class="notif-content">
+
+                        <h4>
+                            Reservation {{ r.status }}
+                        </h4>
+
+                        <p>
+                            Your reservation at
+                            Lab {{ r.lab }},
+                            PC #{{ r.pc_number }}
+                            is {{ r.status }}.
+                        </p>
+
+                        <small>
+                            {{ r.date }}
+                            •
+                            {{ r.time_slot }}
+                        </small>
+
+                    </div>
+
+                    <span class="notif-dot"></span>
+
+                </div>
+
+                {% endfor %}
+            {% endif %}
+
+            <!-- FEEDBACK -->
+
+            {% if feedback_notifications %}
+                {% for item in feedback_notifications %}
+
+                    {% set record = item.record %}
+
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}">
+
+                        <div class="notif-icon green">
+
+                            {% if item.submitted %}
+                                ⭐
+                            {% else %}
+                                ✅
+                            {% endif %}
+
+                        </div>
+
+                        <div class="notif-content">
+
+                            {% if item.submitted %}
+
+                                <h4>
+                                    Feedback submitted
+                                </h4>
+
+                                <p>
+                                    Your feedback for
+                                    Lab {{ record.sit_lab }}
+                                    has been submitted successfully.
+                                </p>
+
+                            {% else %}
+
+                                <h4>
+                                    Feedback required
+                                </h4>
+
+                                <p>
+                                    Your sit-in session at
+                                    Lab {{ record.sit_lab }}
+                                    has ended.
+                                    Please submit your feedback.
+                                </p>
+
+                            {% endif %}
+
+                            <small>
+                                {{ record.logout_time }}
+                            </small>
+
+                        </div>
+
+                        {% if not item.submitted %}
+                            <span class="notif-dot"></span>
+                        {% endif %}
+
+                    </div>
+
+                {% endfor %}
+            {% endif %}
+
+            <!-- ANNOUNCEMENTS -->
+
+            {% if announcements %}
+                {% for item in announcements %}
+
+                <div class="notif-item">
+
+                    <div class="notif-icon orange">
+                        📢
+                    </div>
+
+                    <div class="notif-content">
+
+                        <h4>
+                            New announcement from CCS Admin
+                        </h4>
+
+                        <p>
+                            "{{ item.content }}"
+                        </p>
+
+                        <small>
+                            {{ item.created_at }}
+                        </small>
+
+                    </div>
+
+                </div>
+
+                {% endfor %}
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function openNotifModal() {
+    document.getElementById('notifModal')
+    .classList.add('show');
+}
+
+function closeNotifModal() {
+    document.getElementById('notifModal')
+    .classList.remove('show');
+}
+
+
+// TABS
+
+const notifTabs =
+    document.querySelectorAll('.notif-tabs button');
+
+const notifItems =
+    document.querySelectorAll('.notif-item');
+
+notifTabs.forEach(tab => {
+
+    tab.addEventListener('click', () => {
+
+        notifTabs.forEach(t =>
+            t.classList.remove('active')
+        );
+
+        tab.classList.add('active');
+
+        const tabText =
+            tab.innerText.toLowerCase();
+
+        notifItems.forEach(item => {
+
+            item.style.display = 'flex';
+
+            // ALL
+            if(tabText === 'all'){
+                item.style.display = 'flex';
+            }
+
+            // UNREAD
+            else if(tabText === 'unread'){
+
+                if(!item.classList.contains('unread')){
+                    item.style.display = 'none';
+                }
+
+            }
+
+            // ANNOUNCEMENTS
+            else if(tabText === 'announcements'){
+
+                const title =
+                    item.querySelector('h4')
+                    .innerText
+                    .toLowerCase();
+
+                if(!title.includes('announcement')){
+                    item.style.display = 'none';
+                }
+
+            }
+
+            // RESERVATIONS
+            else if(tabText === 'reservations'){
+
+                const title =
+                    item.querySelector('h4')
+                    .innerText
+                    .toLowerCase();
+
+                if(!title.includes('reservation')){
+                    item.style.display = 'none';
+                }
+
+            }
+
+        });
+
+    });
+
+});
+
+
+// MARK ALL READ
+
+document.querySelector('.notif-read-btn')
+.addEventListener('click', () => {
+
+    document.querySelectorAll('.notif-item.unread')
+    .forEach(item => {
+
+        item.classList.remove('unread');
+
+        const dot = item.querySelector('.notif-dot');
+
+        if(dot){
+            dot.remove();
+        }
+
+    });
+
+});
+
+</script>
+
+<script>
+const NOTIF_READ_KEY = 'ccs_student_notifications_read';
+
+function openNotifModal() {
+    document.getElementById('notifModal').classList.add('show');
+}
+
+function closeNotifModal() {
+    document.getElementById('notifModal').classList.remove('show');
+}
+
+function filterNotifications(type, button) {
+    document.querySelectorAll('.notif-tabs button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    button.classList.add('active');
+
+    document.querySelectorAll('.notif-item').forEach(item => {
+        const itemType = item.dataset.type;
+
+        if (type === 'all') {
+            item.style.display = 'flex';
+        } else if (type === 'unread') {
+            item.style.display = item.classList.contains('unread') ? 'flex' : 'none';
+        } else {
+            item.style.display = itemType === type ? 'flex' : 'none';
+        }
+    });
+}
+
+function applyNotificationsReadUI() {
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = 'none';
+    }
+
+    document.querySelectorAll('.notif-dot').forEach(dot => {
+        dot.remove();
+    });
+
+    document.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.classList.remove('unread');
+    });
+
+    const notifText = document.getElementById('notifHeaderText');
+    if (notifText) {
+        notifText.innerText = 'All caught up!';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+    if (notifCount) {
+        notifCount.innerText = '0';
+    }
+}
+
+function markAllNotificationsRead() {
+    localStorage.setItem(NOTIF_READ_KEY, 'yes');
+    applyNotificationsReadUI();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
+        applyNotificationsReadUI();
+    }
+});
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('notifModal');
+
+    if (e.target === modal) {
+        closeNotifModal();
+    }
+});
+</script>
+</body>
+</html>

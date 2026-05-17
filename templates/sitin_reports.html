@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Sit-in Reports</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='sitin_reports.css') }}">
+
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+
+<body class="admin-page">
+
+<nav class="admin-navbar">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-brand">
+        College of Computer Studies Admin
+    </a>
+
+    <div class="admin-links">
+        <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="#" onclick="openSearchModal(); return false;">Search</a>
+        <a href="{{ url_for('admin_students') }}">Students</a>
+        <a href="{{ url_for('current_sitin') }}">Sit-in</a>
+        <a href="{{ url_for('view_sitin_records') }}">View Sit-in Records</a>
+        <a href="{{ url_for('sitin_reports') }}" class="active">Sit-in Reports</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
+        <a href="{{ url_for('admin_reservation') }}">Reservation</a>
+        <a href="{{ url_for('admin_logout') }}" class="admin-logout">Log out</a>
+        <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+    </div>
+</nav>
+
+<div class="reports-page-shell">
+
+    <div class="reports-page-header">
+        <div>
+            <h1>📊 Sit-in Reports</h1>
+            <p>Generate, filter, print, and export sit-in reports.</p>
+        </div>
+    </div>
+
+    <div class="reports-filters">
+
+        <div class="rpt-filter-group">
+            <label class="rpt-filter-label">Date</label>
+            <input type="date" class="rpt-filter-input" id="rptDate">
+        </div>
+
+        <div class="rpt-filter-group">
+            <label class="rpt-filter-label">Purpose</label>
+            <select class="rpt-filter-select" id="rptPurpose">
+                <option value="">All Purposes</option>
+                <option>C Programming</option>
+                <option>Java Programming</option>
+                <option>Python Programming</option>
+                <option>Web Development</option>
+                <option>Database</option>
+            </select>
+        </div>
+
+        <div class="rpt-filter-group">
+            <label class="rpt-filter-label">Laboratory</label>
+            <select class="rpt-filter-select" id="rptLab">
+                <option value="">All Labs</option>
+                <option value="524">524</option>
+                <option value="526">526</option>
+                <option value="528">528</option>
+                <option value="530">530</option>
+                <option value="542">542</option>
+                <option value="544">544</option>
+            </select>
+        </div>
+
+        <button class="rpt-btn-search" onclick="rptApplyFilters()">
+            🔍 Search
+        </button>
+
+        <button class="rpt-btn-reset" onclick="rptResetFilters()">
+            Reset
+        </button>
+
+    </div>
+
+    <div class="reports-toolbar">
+
+        <div class="rpt-export-group">
+            <span class="rpt-export-label">Export:</span>
+
+            <a href="{{ url_for('export_csv') }}"
+               class="rpt-btn-export rpt-btn-csv"
+               id="exportCsvBtn">
+                📄 CSV
+            </a>
+
+            <a href="{{ url_for('export_excel') }}"
+               class="rpt-btn-export rpt-btn-excel"
+               id="exportExcelBtn">
+                📊 Excel
+            </a>
+
+            <button class="rpt-btn-export rpt-btn-pdf"
+                    onclick="window.print()">
+                🖨 Print / PDF
+            </button>
+        </div>
+
+        <div class="rpt-search-wrap">
+            <input type="text"
+                   id="rptSearch"
+                   placeholder="Search reports..."
+                   oninput="rptFilterTable()">
+        </div>
+
+    </div>
+
+    <div class="reports-table-wrap">
+
+        <table class="reports-table" id="rptTable">
+            <thead>
+                <tr>
+                    <th>ID Number</th>
+                    <th>Name</th>
+                    <th>Purpose</th>
+                    <th>Laboratory</th>
+                    <th>Login Time</th>
+                    <th>Logout Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="rptTableBody">
+                {% for r in sit_in_records %}
+                <tr
+                    data-purpose="{{ r.purpose }}"
+                    data-lab="{{ r.sit_lab }}"
+                    data-login="{{ r.login_time }}"
+                >
+                    <td>{{ r.student_id_number }}</td>
+
+                    <td>
+                        <strong>{{ r.student_name }}</strong>
+                    </td>
+
+                    <td>{{ r.purpose }}</td>
+                    <td>{{ r.sit_lab }}</td>
+                    <td>{{ r.login_time }}</td>
+
+                    <td>
+                        {% if r.logout_time %}
+                            {{ r.logout_time }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if r.status == 'Active' %}
+                            <span class="rpt-status rpt-status-active">
+                                ● Active
+                            </span>
+                        {% else %}
+                            <span class="rpt-status rpt-status-done">
+                                ✓ Logged Out
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+    <div class="reports-footer-row">
+        <span id="rptCount">Loading...</span>
+    </div>
+
+</div>
+
+<script>
+function getFilterValues() {
+    return {
+        search: document.getElementById('rptSearch').value.trim(),
+        purpose: document.getElementById('rptPurpose').value.trim(),
+        lab: document.getElementById('rptLab').value.trim(),
+        date: document.getElementById('rptDate').value.trim()
+    };
+}
+
+function updateExportLinks() {
+    const filters = getFilterValues();
+    const params = new URLSearchParams();
+
+    if (filters.search) params.set('search', filters.search);
+    if (filters.purpose) params.set('purpose', filters.purpose);
+    if (filters.lab) params.set('lab', filters.lab);
+    if (filters.date) params.set('date', filters.date);
+
+    const queryString = params.toString();
+
+    document.getElementById('exportCsvBtn').href =
+        "{{ url_for('export_csv') }}" + (queryString ? '?' + queryString : '');
+
+    document.getElementById('exportExcelBtn').href =
+        "{{ url_for('export_excel') }}" + (queryString ? '?' + queryString : '');
+}
+
+function rptFilterTable() {
+    const filters = getFilterValues();
+
+    const search = filters.search.toLowerCase();
+    const purpose = filters.purpose.toLowerCase();
+    const lab = filters.lab.toLowerCase();
+    const date = filters.date;
+
+    document.querySelectorAll('#rptTableBody tr').forEach(row => {
+        const rowText = row.textContent.toLowerCase();
+        const rowPurpose = (row.dataset.purpose || '').toLowerCase();
+        const rowLab = (row.dataset.lab || '').toLowerCase();
+        const rowLogin = row.dataset.login || '';
+
+        const matchSearch = !search || rowText.includes(search);
+        const matchPurpose = !purpose || rowPurpose === purpose;
+        const matchLab = !lab || rowLab === lab;
+        const matchDate = !date || rowLogin.startsWith(date);
+
+        row.style.display =
+            matchSearch && matchPurpose && matchLab && matchDate
+                ? ''
+                : 'none';
+    });
+
+    rptUpdateCount();
+    updateExportLinks();
+}
+
+function rptApplyFilters() {
+    rptFilterTable();
+}
+
+function rptResetFilters() {
+    document.getElementById('rptDate').value = '';
+    document.getElementById('rptPurpose').value = '';
+    document.getElementById('rptLab').value = '';
+    document.getElementById('rptSearch').value = '';
+
+    document.querySelectorAll('#rptTableBody tr').forEach(row => {
+        row.style.display = '';
+    });
+
+    rptUpdateCount();
+    updateExportLinks();
+}
+
+function rptUpdateCount() {
+    const total = document.querySelectorAll('#rptTableBody tr').length;
+
+    const visible = Array.from(
+        document.querySelectorAll('#rptTableBody tr')
+    ).filter(row => row.style.display !== 'none').length;
+
+    document.getElementById('rptCount').textContent =
+        `Showing ${visible} of ${total} record(s)`;
+}
+
+document.getElementById('rptDate').addEventListener('change', rptFilterTable);
+document.getElementById('rptPurpose').addEventListener('change', rptFilterTable);
+document.getElementById('rptLab').addEventListener('change', rptFilterTable);
+
+rptUpdateCount();
+updateExportLinks();
+</script>
+
+</body>
+</html>

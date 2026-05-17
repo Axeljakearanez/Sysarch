@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - CCS Sit-in Monitoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body>
+
+    <a href="{{ url_for('login') }}" class="back-btn">← Back</a>
+    <button class="dm-toggle" title="Toggle Dark Mode" style="position:fixed;top:16px;right:20px;z-index:999">🌙</button>
+
+    <div class="reg-wrapper">
+        <div class="reg-card">
+
+            <div class="reg-form-side">
+                <h2 class="reg-title">Sign up</h2>
+                <p class="reg-subtitle">Create your student account</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="register-flash-wrap" id="registerFlashWrap">
+      {% for category, message in messages %}
+        <div class="flash-alert register-flash-item {% if category == 'success' %}flash-success{% else %}flash-error-theme{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+                <form method="POST" action="{{ url_for('register') }}">
+
+                    <div class="field-wrap">
+                        <label class="field-label">ID Number</label>
+                        <input
+                            type="text"
+                            name="id_number"
+                            placeholder="e.g. 2024-00001"
+                            value="{{ form_data.get('id_number', '') }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-wrap">
+                            <label class="field-label">Last Name</label>
+                            <input
+                                type="text"
+                                name="last_name"
+                                placeholder="Last name"
+                                value="{{ form_data.get('last_name', '') }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="field-wrap">
+                            <label class="field-label">First Name</label>
+                            <input
+                                type="text"
+                                name="first_name"
+                                placeholder="First name"
+                                value="{{ form_data.get('first_name', '') }}"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="field-label">Middle Name <span class="optional">(optional)</span></label>
+                        <input
+                            type="text"
+                            name="middle_name"
+                            placeholder="Middle name"
+                            value="{{ form_data.get('middle_name', '') }}"
+                        >
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-wrap">
+                            <label class="field-label">Course</label>
+                            <select name="course" required>
+                                <option value="" disabled {{ 'selected' if not form_data.get('course') else '' }}>Select course</option>
+
+                                <optgroup label="── Computer Studies ──">
+                                    <option value="BSIT" {{ 'selected' if form_data.get('course') == 'BSIT' else '' }}>BSIT</option>
+                                    <option value="BSCS" {{ 'selected' if form_data.get('course') == 'BSCS' else '' }}>BSCS</option>
+                                    <option value="BSIS" {{ 'selected' if form_data.get('course') == 'BSIS' else '' }}>BSIS</option>
+                                    <option value="ACT" {{ 'selected' if form_data.get('course') == 'ACT' else '' }}>ACT</option>
+                                </optgroup>
+
+                                <optgroup label="── Engineering ──">
+                                    <option value="BSCE" {{ 'selected' if form_data.get('course') == 'BSCE' else '' }}>BSCE</option>
+                                    <option value="BSEE" {{ 'selected' if form_data.get('course') == 'BSEE' else '' }}>BSEE</option>
+                                    <option value="BSME" {{ 'selected' if form_data.get('course') == 'BSME' else '' }}>BSME</option>
+                                    <option value="BSEcE" {{ 'selected' if form_data.get('course') == 'BSEcE' else '' }}>BSEcE</option>
+                                    <option value="BSIE" {{ 'selected' if form_data.get('course') == 'BSIE' else '' }}>BSIE</option>
+                                </optgroup>
+
+                                <optgroup label="── Business & Accountancy ──">
+                                    <option value="BSBA" {{ 'selected' if form_data.get('course') == 'BSBA' else '' }}>BSBA</option>
+                                    <option value="BSA" {{ 'selected' if form_data.get('course') == 'BSA' else '' }}>BSA</option>
+                                    <option value="BSMA" {{ 'selected' if form_data.get('course') == 'BSMA' else '' }}>BSMA</option>
+                                </optgroup>
+
+                                <optgroup label="── Education ──">
+                                    <option value="BEED" {{ 'selected' if form_data.get('course') == 'BEED' else '' }}>BEED</option>
+                                    <option value="BSED" {{ 'selected' if form_data.get('course') == 'BSED' else '' }}>BSED</option>
+                                </optgroup>
+
+                                <optgroup label="── Arts & Sciences ──">
+                                    <option value="AB-PolSci" {{ 'selected' if form_data.get('course') == 'AB-PolSci' else '' }}>AB Political Science</option>
+                                    <option value="AB-English" {{ 'selected' if form_data.get('course') == 'AB-English' else '' }}>AB English</option>
+                                    <option value="BSP" {{ 'selected' if form_data.get('course') == 'BSP' else '' }}>BS Psychology</option>
+                                    <option value="BSBio" {{ 'selected' if form_data.get('course') == 'BSBio' else '' }}>BS Biology</option>
+                                </optgroup>
+
+                                <optgroup label="── Nursing ──">
+                                    <option value="BSN" {{ 'selected' if form_data.get('course') == 'BSN' else '' }}>BSN</option>
+                                </optgroup>
+
+                                <optgroup label="── Architecture ──">
+                                    <option value="BSArch" {{ 'selected' if form_data.get('course') == 'BSArch' else '' }}>BSArch</option>
+                                </optgroup>
+
+                                <optgroup label="── Tourism & Hospitality ──">
+                                    <option value="BSTM" {{ 'selected' if form_data.get('course') == 'BSTM' else '' }}>BSTM</option>
+                                    <option value="BSHM" {{ 'selected' if form_data.get('course') == 'BSHM' else '' }}>BSHM</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="field-wrap">
+                            <label class="field-label">Year Level</label>
+                            <select name="course_level" required>
+                                <option value="" disabled {{ 'selected' if not form_data.get('course_level') else '' }}>Select year</option>
+                                <option value="1" {{ 'selected' if form_data.get('course_level') == '1' else '' }}>1</option>
+                                <option value="2" {{ 'selected' if form_data.get('course_level') == '2' else '' }}>2</option>
+                                <option value="3" {{ 'selected' if form_data.get('course_level') == '3' else '' }}>3</option>
+                                <option value="4" {{ 'selected' if form_data.get('course_level') == '4' else '' }}>4</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="field-label">Email</label>
+                        <input
+                            type="email"
+                            name="email"
+                            placeholder="your@email.com"
+                            value="{{ form_data.get('email', '') }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-wrap">
+                            <label class="field-label">Password</label>
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="Min. 6 characters"
+                                required
+                            >
+                        </div>
+
+                        <div class="field-wrap">
+                            <label class="field-label">Repeat Password</label>
+                            <input
+                                type="password"
+                                name="repeat_password"
+                                placeholder="Repeat password"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="field-label">Address</label>
+                        <input
+                            type="text"
+                            name="address"
+                            placeholder="Your address"
+                            value="{{ form_data.get('address', '') }}"
+                        >
+                    </div>
+
+                    <button type="submit" class="btn-register">Create Account</button>
+
+                    <p class="login-link">
+                        Already have an account? <a href="{{ url_for('login') }}">Login</a>
+                    </p>
+                </form>
+            </div>
+
+            <div class="reg-img-side">
+                <img src="{{ url_for('static', filename='signup.avif') }}" alt="Sign Up Illustration" class="reg-img-top">
+                <img src="{{ url_for('static', filename='UC.webp') }}" alt="CCS Logo" class="reg-img-bottom">
+            </div>
+
+        </div>
+    </div>
+ <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const flashItems = document.querySelectorAll('.register-flash-item');
+
+    if (!flashItems.length) return;
+
+    setTimeout(() => {
+        flashItems.forEach(item => {
+            item.classList.add('hide');
+        });
+    }, 2500);
+
+    setTimeout(() => {
+        const wrap = document.getElementById('registerFlashWrap');
+        if (wrap) {
+            wrap.remove();
+        }
+    }, 3000);
+});
+</script>
+
+</body>
+</html>
