@@ -68,6 +68,47 @@
             <button class="armgmt-tab" onclick="switchTab('pcstatus', this)">💻 PC Status</button>
         </div>
 
+        {% set total_reservations = reservations|length %}
+{% set pending_reservations = reservations|selectattr('status', 'equalto', 'Pending')|list|length %}
+{% set approved_reservations = reservations|selectattr('status', 'equalto', 'Approved')|list|length %}
+{% set cancelled_reservations = reservations|selectattr('status', 'equalto', 'Cancelled')|list|length %}
+
+<div class="armgmt-status-overview">
+
+    <div class="armgmt-status-card">
+        <div class="armgmt-status-icon purple">📋</div>
+        <div>
+            <p>Total Reservations</p>
+            <h3>{{ total_reservations }}</h3>
+        </div>
+    </div>
+
+    <div class="armgmt-status-card">
+        <div class="armgmt-status-icon yellow">⏳</div>
+        <div>
+            <p>Pending</p>
+            <h3>{{ pending_reservations }}</h3>
+        </div>
+    </div>
+
+    <div class="armgmt-status-card">
+        <div class="armgmt-status-icon green">✅</div>
+        <div>
+            <p>Approved</p>
+            <h3>{{ approved_reservations }}</h3>
+        </div>
+    </div>
+
+    <div class="armgmt-status-card">
+        <div class="armgmt-status-icon red">❌</div>
+        <div>
+            <p>Cancelled</p>
+            <h3>{{ cancelled_reservations }}</h3>
+        </div>
+    </div>
+
+</div>
+
         <!-- ALL RESERVATIONS -->
         <div class="armgmt-tab-body active" id="tabAll">
 
@@ -217,6 +258,19 @@
                     <div class="armgmt-filter-group">
                         <label class="armgmt-filter-label">DATE</label>
                         <input type="date" class="armgmt-filter-date" id="availabilityDate" onchange="loadAvailability()">
+                    <div class="armgmt-lab-maintenance-tools">
+    <h4>Lab Maintenance Control</h4>
+    <p>Mark an entire lab as unavailable so students cannot reserve any PC inside it.</p>
+
+    <div class="armgmt-lab-maintenance-grid">
+        {% for lab in ['Lab 524', 'Lab 526', 'Lab 528', 'Lab 530', 'Lab 542', 'Lab 544'] %}
+            <button type="button" class="armgmt-lab-maint-btn" onclick="toggleLabMaintenance('{{ lab }}')">
+                🏫 {{ lab }}
+                <span>Toggle Maintenance</span>
+            </button>
+        {% endfor %}
+    </div>
+</div>
                     </div>
                 </div>
 
@@ -357,16 +411,34 @@ async function loadAvailability() {
                 }
 
                 const slotRows = data.time_slots.map(slot => {
-                    const isFull = slot.is_full;
-                    return `
-                        <div class="armgmt-avail-slot">
-                            <span class="armgmt-avail-slot-time">${slot.time_slot}</span>
-                            <span class="armgmt-avail-slot-status ${isFull ? 'full' : 'available'}">
-                                ${isFull ? 'Full' : `${slot.available_count} free`}
-                            </span>
-                        </div>
-                    `;
-                }).join('');
+    const labStatus = slot.lab_status || 'Available';
+
+    let statusClass = 'available';
+    let statusText = `${slot.available_count} PCs Available`;
+
+    if (labStatus === 'Maintenance') {
+        statusClass = 'maintenance';
+        statusText = 'Under Maintenance';
+    } else if (labStatus === 'Closed') {
+        statusClass = 'closed';
+        statusText = 'Closed';
+    } else if (labStatus === 'Reserved for Class') {
+        statusClass = 'reserved-class';
+        statusText = 'Reserved for Class';
+    } else if (labStatus === 'Full' || slot.is_full) {
+        statusClass = 'full';
+        statusText = 'Full';
+    }
+
+    return `
+        <div class="armgmt-avail-slot">
+            <span class="armgmt-avail-slot-time">${slot.time_slot}</span>
+            <span class="armgmt-avail-slot-status ${statusClass}">
+                ${statusText}
+            </span>
+        </div>
+    `;
+}).join('');
 
                 return `
                     <div class="armgmt-avail-card">
@@ -446,6 +518,69 @@ async function toggleMaintenance(lab, pcNumber) {
         if (availabilityDate) {
             loadAvailability();
         }
+    } catch (error) {
+        alert('Failed to connect to the server.');
+    }
+}
+
+async function toggleLabMaintenance(lab) {
+    const status = prompt(
+        `Set status for ${lab}:\n\nType one:\nAvailable\nFull\nMaintenance\nReserved for Class\nClosed`,
+        'Maintenance'
+    );
+
+    if (status === null) {
+        return;
+    }
+
+    const allowedStatuses = [
+        'Available',
+        'Full',
+        'Maintenance',
+        'Reserved for Class',
+        'Closed'
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+        alert('Invalid status. Please type exactly: Available, Full, Maintenance, Reserved for Class, or Closed.');
+        return;
+    }
+
+    let note = '';
+
+    if (status !== 'Available') {
+        note = prompt(`Add note for ${lab}:`, status);
+
+        if (note === null) {
+            return;
+        }
+    }
+
+    if (!confirm(`Set ${lab} status to "${status}"?`)) {
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('lab', lab);
+        formData.append('status', status);
+        formData.append('note', note);
+
+        const response = await fetch('/api/admin/toggle-lab-status', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || 'Failed to update lab status.');
+            return;
+        }
+
+        alert(`${data.lab} is now ${data.status}.`);
+        loadAvailability();
+
     } catch (error) {
         alert('Failed to connect to the server.');
     }

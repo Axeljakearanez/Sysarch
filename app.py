@@ -145,6 +145,16 @@ class PCStatus(db.Model):
         db.UniqueConstraint('lab', 'pc_number', name='unique_lab_pc'),
     )
 
+class LabStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lab = db.Column(db.String(50), unique=True, nullable=False)
+    status = db.Column(db.String(30), default='Available')  # Available / Maintenance
+    note = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(
+        db.String(50),
+        default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
+
 
 # ======================
 # DATABASE HELPERS
@@ -289,6 +299,21 @@ def get_reserved_pc_numbers(lab, reservation_date, time_slot):
 def get_maintenance_pc_numbers(lab):
     pcs = PCStatus.query.filter_by(lab=lab, status='Maintenance').all()
     return {pc.pc_number for pc in pcs}
+
+def get_lab_status(lab):
+    lab_status = LabStatus.query.filter_by(lab=lab).first()
+
+    if not lab_status:
+        lab_status = LabStatus(
+            lab=lab,
+            status='Available',
+            note=''
+        )
+        db.session.add(lab_status)
+        db.session.commit()
+
+    return lab_status
+
 
 
 def get_available_pc_numbers(lab, reservation_date, time_slot):
@@ -489,9 +514,41 @@ def dashboard():
     if 'student_id' not in session:
         return redirect(url_for('login'))
 
-    student = Student.query.get_or_404(
-        session['student_id']
+    student = Student.query.get_or_404(session['student_id'])
+
+    records = SitInRecord.query.filter_by(
+        student_id_number=student.id_number
+    ).all()
+
+    total_sitins = len(records)
+
+    active_sitins = sum(
+        1 for record in records
+        if record.status == 'Active'
     )
+
+    logged_out_sitins = sum(
+        1 for record in records
+        if record.status == 'Logged Out'
+    )
+
+    feedback_submitted = Feedback.query.filter_by(
+        student_id=student.id
+    ).count()
+
+    # Convert stored total_hours into readable time like 15m, 1h, 1h 30m
+    total_hours = student.total_hours or 0
+    total_minutes = int(total_hours * 60)
+
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
+    if hours > 0 and minutes > 0:
+        total_time_display = f"{hours}h {minutes}m"
+    elif hours > 0:
+        total_time_display = f"{hours}h"
+    else:
+        total_time_display = f"{minutes}m"
 
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
@@ -501,7 +558,13 @@ def dashboard():
         student=student,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        feedback_notifications=feedback_notifications
+        feedback_notifications=feedback_notifications,
+        total_sitins=total_sitins,
+        active_sitins=active_sitins,
+        logged_out_sitins=logged_out_sitins,
+        feedback_submitted=feedback_submitted,
+        total_hours=total_hours,
+        total_time_display=total_time_display
     )
 
 # ======================
@@ -963,7 +1026,7 @@ def reservation():
         student_id=student.id
     ).order_by(Reservation.id.desc()).all()
 
-    announcements, notif_reservations, pending_feedback_records = \
+    announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
     return render_template(
@@ -972,7 +1035,7 @@ def reservation():
         student=student,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        pending_feedback_records=pending_feedback_records
+        feedback_notifications=feedback_notifications
     )
 
 
@@ -1002,6 +1065,10 @@ def submit_reservation():
 
     if lab not in LABS:
         flash('Invalid laboratory selected.', 'error')
+        return redirect(url_for('reservation'))
+
+    if is_lab_unavailable(lab):
+        flash('This laboratory is currently unavailable or under maintenance.', 'error')
         return redirect(url_for('reservation'))
 
     if time_slot not in TIME_SLOTS:
@@ -1105,7 +1172,25 @@ def admin_reservation():
         return redirect(url_for('login'))
 
     reservations = Reservation.query.order_by(Reservation.id.desc()).all()
-    return render_template('admin_reservation.html', reservations=reservations)
+
+    total_reservations = Reservation.query.count()
+    pending_reservations = Reservation.query.filter_by(status='Pending').count()
+    approved_reservations = Reservation.query.filter_by(status='Approved').count()
+    cancelled_reservations = Reservation.query.filter_by(status='Cancelled').count()
+
+    unavailable_labs = 0
+    maintenance_pcs = PCStatus.query.filter_by(status='Maintenance').count()
+
+    return render_template(
+        'admin_reservation.html',
+        reservations=reservations,
+        total_reservations=total_reservations,
+        pending_reservations=pending_reservations,
+        approved_reservations=approved_reservations,
+        cancelled_reservations=cancelled_reservations,
+        unavailable_labs=unavailable_labs,
+        maintenance_pcs=maintenance_pcs
+    )
 
 
 @app.route('/admin/approve_reservation/<int:reservation_id>', methods=['POST'])
@@ -1185,6 +1270,25 @@ def cancel_reservation_admin(reservation_id):
 # ======================
 # REAL-TIME RESERVATION API
 # ======================
+def get_lab_status(lab):
+    lab_status = LabStatus.query.filter_by(lab=lab).first()
+
+    if not lab_status:
+        lab_status = LabStatus(
+            lab=lab,
+            status='Available',
+            note=''
+        )
+        db.session.add(lab_status)
+        db.session.commit()
+
+    return lab_status
+
+
+def is_lab_unavailable(lab):
+    lab_status = get_lab_status(lab)
+    return lab_status.status != 'Available'
+
 
 @app.route('/api/reservation/labs')
 def api_reservation_labs():
@@ -1197,16 +1301,28 @@ def api_reservation_labs():
         return jsonify({'error': 'Valid date is required'}), 400
 
     labs_data = []
+
     for lab in LABS:
+        lab_status_record = get_lab_status(lab)
+        lab_unavailable = lab_status_record.status != 'Available'
+
         maintenance_count = len(get_maintenance_pc_numbers(lab))
         usable_pcs = PCS_PER_LAB - maintenance_count
+
+        if lab_unavailable:
+            available_count = 0
+            lab_status = lab_status_record.status
+        else:
+            available_count = usable_pcs
+            lab_status = 'Available' if usable_pcs > 0 else 'Full'
 
         labs_data.append({
             'id': lab,
             'name': lab,
             'pcs': PCS_PER_LAB,
-            'available_count': usable_pcs,
-            'status': 'Available' if usable_pcs > 0 else 'Full'
+            'available_count': available_count,
+            'status': lab_status,
+            'note': lab_status_record.note or ''
         })
 
     return jsonify({'labs': labs_data})
@@ -1227,21 +1343,26 @@ def api_reservation_time_slots():
     if lab not in LABS:
         return jsonify({'error': 'Valid lab is required'}), 400
 
+    lab_status_record = get_lab_status(lab)
+    lab_status = lab_status_record.status
+    lab_unavailable = lab_status != 'Available'
+
     slots = []
 
     for slot in TIME_SLOTS:
 
-        available_pcs = get_available_pc_numbers(
-            lab,
-            reservation_date,
-            slot
-        )
+        if lab_unavailable:
+            available_pcs = []
+        else:
+            available_pcs = get_available_pc_numbers(
+                lab,
+                reservation_date,
+                slot
+            )
 
-        # CHECK IF SLOT IS ALREADY PAST
         is_past_slot = False
 
         if reservation_date == date.today().strftime('%Y-%m-%d'):
-
             slot_start_part = slot.split('–')[0].strip()
             slot_start_time = datetime.strptime(
                 slot_start_part,
@@ -1255,7 +1376,8 @@ def api_reservation_time_slots():
             'time_slot': slot,
             'available_count': len(available_pcs),
             'is_full': len(available_pcs) == 0,
-            'is_past': is_past_slot
+            'is_past': is_past_slot,
+            'lab_status': lab_status
         })
 
     return jsonify({'time_slots': slots})
@@ -1279,10 +1401,26 @@ def api_reservation_pcs():
     if time_slot not in TIME_SLOTS:
         return jsonify({'error': 'Valid time slot is required'}), 400
 
+    # If the whole lab is under maintenance, mark all PCs as Maintenance
+    if is_lab_unavailable(lab):
+        pcs = []
+
+        for pc_number in range(1, PCS_PER_LAB + 1):
+            pcs.append({
+                'pc_number': pc_number,
+                'status': 'Maintenance'
+            })
+
+        return jsonify({
+            'pcs': pcs,
+            'lab_status': 'Maintenance'
+        })
+
     reserved = get_reserved_pc_numbers(lab, reservation_date, time_slot)
     maintenance = get_maintenance_pc_numbers(lab)
 
     pcs = []
+
     for pc_number in range(1, PCS_PER_LAB + 1):
         if pc_number in maintenance:
             status = 'Maintenance'
@@ -1296,8 +1434,10 @@ def api_reservation_pcs():
             'status': status
         })
 
-    return jsonify({'pcs': pcs})
-
+    return jsonify({
+        'pcs': pcs,
+        'lab_status': 'Available'
+    })
 
 # ======================
 # ADMIN PC STATUS API
@@ -1354,7 +1494,42 @@ def api_admin_toggle_pc_status():
         'status': pc.status
     })
 
+@app.route('/api/admin/toggle-lab-status', methods=['POST'])
+def api_admin_toggle_lab_status():
+    if 'admin_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
 
+    lab = request.form.get('lab', '').strip()
+    status = request.form.get('status', '').strip()
+    note = request.form.get('note', '').strip()
+
+    allowed_statuses = [
+        'Available',
+        'Full',
+        'Maintenance',
+        'Reserved for Class',
+        'Closed'
+    ]
+
+    if lab not in LABS:
+        return jsonify({'error': 'Invalid lab selected.'}), 400
+
+    if status not in allowed_statuses:
+        return jsonify({'error': 'Invalid lab status.'}), 400
+
+    lab_status = get_lab_status(lab)
+    lab_status.status = status
+    lab_status.note = note
+    lab_status.updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'lab': lab,
+        'status': lab_status.status,
+        'note': lab_status.note
+    })
 # ======================
 # ADMIN NAVBAR ALIASES
 # ======================
@@ -1498,7 +1673,7 @@ def edit_profile():
 
     student = Student.query.get_or_404(session['student_id'])
 
-    announcements, notif_reservations, pending_feedback_records = \
+    announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
     if request.method == 'POST':
@@ -1519,7 +1694,7 @@ def edit_profile():
                     student=student,
                     announcements=announcements,
                     notif_reservations=notif_reservations,
-                    pending_feedback_records=pending_feedback_records
+                    feedback_notifications=feedback_notifications
                 )
 
             if len(new_password) < 6:
@@ -1529,7 +1704,7 @@ def edit_profile():
                     student=student,
                     announcements=announcements,
                     notif_reservations=notif_reservations,
-                    pending_feedback_records=pending_feedback_records
+                    feedback_notifications=feedback_notifications
                 )
 
             student.password = generate_password_hash(new_password)
@@ -1539,11 +1714,17 @@ def edit_profile():
         if file and file.filename:
             filename = secure_filename(file.filename)
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            file_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                filename
+            )
+
             file.save(file_path)
             student.profile_pic = filename
 
         db.session.commit()
+
         flash('Profile updated successfully!', 'success')
         return redirect(url_for('dashboard'))
 
@@ -1552,9 +1733,8 @@ def edit_profile():
         student=student,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        pending_feedback_records=pending_feedback_records
+        feedback_notifications=feedback_notifications
     )
-
 
 # ======================
 # FORGOT PASSWORD

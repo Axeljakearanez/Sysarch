@@ -8750,3 +8750,514 @@ body.dark .rsv-lab-card.selected .rsv-lab-status {
     }
 }
 
+/* ================================
+   ADMIN RESERVATION STATUS OVERVIEW
+================================ */
+
+.armgmt-status-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 22px 0 24px;
+}
+
+.armgmt-status-card {
+    background: linear-gradient(180deg, #ffffff, #faf8ff);
+    border: 1px solid #e7ddfb;
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 10px 22px rgba(75, 45, 143, 0.08);
+    transition: 0.22s ease;
+}
+
+.armgmt-status-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 30px rgba(75, 45, 143, 0.14);
+    border-color: #d6c5ff;
+}
+
+.armgmt-status-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.armgmt-status-icon.purple {
+    background: rgba(75, 45, 143, 0.13);
+    color: #4B2D8F;
+}
+
+.armgmt-status-icon.yellow {
+    background: rgba(245, 176, 0, 0.17);
+    color: #a66f00;
+}
+
+.armgmt-status-icon.green {
+    background: rgba(34, 197, 94, 0.14);
+    color: #128043;
+}
+
+.armgmt-status-icon.red {
+    background: rgba(239, 68, 68, 0.13);
+    color: #dc2626;
+}
+
+.armgmt-status-card p {
+    margin: 0 0 5px;
+    color: #6f6885;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.armgmt-status-card h3 {
+    margin: 0;
+    color: #241638;
+    font-size: 1.7rem;
+    font-weight: 900;
+}
+
+/* Dark mode */
+html.dark .armgmt-status-card,
+body.dark .armgmt-status-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 176, 0, 0.16);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+html.dark .armgmt-status-card p,
+body.dark .armgmt-status-card p {
+    color: #cfc7e8;
+}
+
+html.dark .armgmt-status-card h3,
+body.dark .armgmt-status-card h3 {
+    color: #ffffff;
+}
+
+@media (max-width: 1100px) {
+    .armgmt-status-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 650px) {
+    .armgmt-status-overview {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ================================
+   ADMIN LAB MAINTENANCE CONTROL
+================================ */
+
+.armgmt-lab-maintenance-tools {
+    background: linear-gradient(180deg, #ffffff, #faf8ff);
+    border: 1px solid #e7ddfb;
+    border-radius: 20px;
+    padding: 18px;
+    margin: 0 0 22px;
+    box-shadow: 0 10px 22px rgba(75, 45, 143, 0.08);
+}
+
+.armgmt-lab-maintenance-tools h4 {
+    color: #241638;
+    font-size: 1.1rem;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.armgmt-lab-maintenance-tools p {
+    color: #6f6885;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.armgmt-lab-maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.armgmt-lab-maint-btn {
+    border: 1px solid #ded2fa;
+    background: linear-gradient(180deg, #ffffff, #f8f4ff);
+    color: #241638;
+    border-radius: 16px;
+    padding: 14px 12px;
+    cursor: pointer;
+    font-weight: 900;
+    box-shadow: 0 8px 18px rgba(75, 45, 143, 0.07);
+    transition: 0.22s ease;
+}
+
+.armgmt-lab-maint-btn span {
+    display: block;
+    margin-top: 5px;
+    color: #6f6885;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.armgmt-lab-maint-btn:hover {
+    transform: translateY(-3px);
+    border-color: #f5b000;
+    box-shadow: 0 14px 26px rgba(75, 45, 143, 0.13);
+}
+
+/* dark mode */
+html.dark .armgmt-lab-maintenance-tools,
+body.dark .armgmt-lab-maintenance-tools {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 176, 0, 0.16);
+}
+
+html.dark .armgmt-lab-maintenance-tools h4,
+body.dark .armgmt-lab-maintenance-tools h4 {
+    color: #ffffff;
+}
+
+html.dark .armgmt-lab-maintenance-tools p,
+body.dark .armgmt-lab-maintenance-tools p {
+    color: #cfc7e8;
+}
+
+html.dark .armgmt-lab-maint-btn,
+body.dark .armgmt-lab-maint-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 176, 0, 0.16);
+    color: #ffffff;
+}
+
+html.dark .armgmt-lab-maint-btn span,
+body.dark .armgmt-lab-maint-btn span {
+    color: #cfc7e8;
+}
+
+@media (max-width: 1200px) {
+    .armgmt-lab-maintenance-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .armgmt-lab-maintenance-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ================================
+   LAB AVAILABILITY STATUS TEXT
+================================ */
+
+.armgmt-avail-slot-status.available {
+    background: #e8f8ef;
+    color: #138044;
+    border: 1px solid #bcebd0;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+.armgmt-avail-slot-status.full {
+    background: #fff4d6;
+    color: #9a6700;
+    border: 1px solid #f5d680;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+.armgmt-avail-slot-status.maintenance {
+    background: #ffe8e8;
+    color: #c62828;
+    border: 1px solid #ffc4c4;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+/* dark mode */
+html.dark .armgmt-avail-slot-status.available,
+body.dark .armgmt-avail-slot-status.available {
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.28);
+}
+
+html.dark .armgmt-avail-slot-status.full,
+body.dark .armgmt-avail-slot-status.full {
+    background: rgba(245, 176, 0, 0.14);
+    color: #f5b000;
+    border-color: rgba(245, 176, 0, 0.28);
+}
+
+html.dark .armgmt-avail-slot-status.maintenance,
+body.dark .armgmt-avail-slot-status.maintenance {
+    background: rgba(239, 68, 68, 0.14);
+    color: #ff8a8a;
+    border-color: rgba(239, 68, 68, 0.30);
+}
+
+.armgmt-avail-slot-status.closed {
+    background: rgba(107, 114, 128, 0.16);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.35);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+.armgmt-avail-slot-status.reserved-class {
+    background: rgba(59, 130, 246, 0.14);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.30);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+html.dark .armgmt-avail-slot-status.closed,
+body.dark .armgmt-avail-slot-status.closed {
+    background: rgba(156, 163, 175, 0.14);
+    color: #d1d5db;
+    border-color: rgba(156, 163, 175, 0.28);
+}
+
+html.dark .armgmt-avail-slot-status.reserved-class,
+body.dark .armgmt-avail-slot-status.reserved-class {
+    background: rgba(59, 130, 246, 0.14);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.30);
+}
+
+/* ================================
+   STUDENT LAB STATUS COLORS
+================================ */
+
+.rsv-lab-status.available {
+    color: #22c55e !important;
+    font-weight: 900;
+}
+
+.rsv-lab-status.full {
+    color: #f5b000 !important;
+    font-weight: 900;
+}
+
+.rsv-lab-status.maintenance {
+    color: #ef4444 !important;
+    font-weight: 900;
+}
+
+.rsv-lab-status.reserved-class {
+    color: #3b82f6 !important;
+    font-weight: 900;
+}
+
+.rsv-lab-status.closed {
+    color: #9ca3af !important;
+    font-weight: 900;
+}
+
+/* Dark mode */
+html.dark .rsv-lab-status.available,
+body.dark .rsv-lab-status.available {
+    color: #22c55e !important;
+}
+
+html.dark .rsv-lab-status.full,
+body.dark .rsv-lab-status.full {
+    color: #f5b000 !important;
+}
+
+html.dark .rsv-lab-status.maintenance,
+body.dark .rsv-lab-status.maintenance {
+    color: #ff6b6b !important;
+}
+
+html.dark .rsv-lab-status.reserved-class,
+body.dark .rsv-lab-status.reserved-class {
+    color: #93c5fd !important;
+}
+
+html.dark .rsv-lab-status.closed,
+body.dark .rsv-lab-status.closed {
+    color: #d1d5db !important;
+}
+
+/* ================================
+   STUDENT SIT-IN SUMMARY
+================================ */
+
+.student-summary-section {
+    max-width: 1450px;
+    margin: 28px auto 40px;
+    background: #ffffff;
+    border: 1px solid #e7ddfb;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(75, 45, 143, 0.08);
+}
+
+.student-summary-header {
+    background: linear-gradient(90deg, #221735, #4B2D8F);
+    color: #ffffff;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 3px solid #F5B000;
+}
+
+.student-summary-header span {
+    color: #F5B000;
+    font-size: 1.25rem;
+}
+
+.student-summary-header h2 {
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.student-summary-header h2 {
+    font-size: 1.15rem;
+    font-weight: 900;
+    margin: 0;
+}
+
+.student-summary-grid {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+}
+
+.student-summary-card {
+    background: linear-gradient(180deg, #ffffff, #faf8ff);
+    border: 1px solid #e8defb;
+    border-radius: 18px;
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 8px 18px rgba(75, 45, 143, 0.06);
+    transition: 0.22s ease;
+}
+
+.student-summary-card:hover {
+    transform: translateY(-3px);
+    border-color: #d6c5ff;
+    box-shadow: 0 14px 26px rgba(75, 45, 143, 0.13);
+}
+
+.student-summary-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.student-summary-icon.purple {
+    background: rgba(75, 45, 143, 0.13);
+    color: #4B2D8F;
+}
+
+.student-summary-icon.green {
+    background: rgba(34, 197, 94, 0.14);
+    color: #128043;
+}
+
+.student-summary-icon.blue {
+    background: rgba(59, 130, 246, 0.14);
+    color: #2563eb;
+}
+
+.student-summary-icon.yellow {
+    background: rgba(245, 176, 0, 0.17);
+    color: #a66f00;
+}
+
+.student-summary-icon.pink {
+    background: rgba(236, 72, 153, 0.13);
+    color: #db2777;
+}
+
+.student-summary-icon.red {
+    background: rgba(239, 68, 68, 0.13);
+    color: #dc2626;
+}
+
+.student-summary-card p {
+    margin: 0 0 5px;
+    color: #6f6885;
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.student-summary-card h3 {
+    margin: 0;
+    color: #241638;
+    font-size: 1.55rem;
+    font-weight: 900;
+}
+
+/* DARK MODE */
+html.dark .student-summary-section,
+body.dark .student-summary-section {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(245, 176, 0, 0.16);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
+}
+
+html.dark .student-summary-card,
+body.dark .student-summary-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 176, 0, 0.14);
+}
+
+html.dark .student-summary-card p,
+body.dark .student-summary-card p {
+    color: #cfc7e8;
+}
+
+html.dark .student-summary-card h3,
+body.dark .student-summary-card h3 {
+    color: #ffffff;
+}
+
+@media (max-width: 1300px) {
+    .student-summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 750px) {
+    .student-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}

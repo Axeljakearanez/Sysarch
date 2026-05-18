@@ -210,7 +210,7 @@
                     </span>
                 </h2>
 
-                <p>
+               <p id="notifHeaderText">
                     You have unread notifications
                 </p>
             </div>
@@ -232,25 +232,13 @@
 
         </div>
 
-        <div class="notif-tabs">
-
-            <button class="active">
-                All
-            </button>
-
-            <button>
-                Unread
-            </button>
-
-            <button>
-                Announcements
-            </button>
-
-            <button>
-                Reservations
-            </button>
-
-        </div>
+       <div class="notif-tabs">
+    <button class="active" onclick="filterNotifications('all', this)">All</button>
+    <button onclick="filterNotifications('unread', this)">Unread</button>
+    <button onclick="filterNotifications('announcements', this)">Announcements</button>
+    <button onclick="filterNotifications('reservations', this)">Reservations</button>
+    <button onclick="filterNotifications('feedback', this)">Feedback</button>
+</div>
 
         <div class="notif-list">
 
@@ -394,125 +382,117 @@
 
 </div>
 
+    </div>
+</div>
 
-<script>
+<!-- SIT-IN SUMMARY -->
+<div class="student-summary-section">
 
-function openNotifModal() {
-    document.getElementById('notifModal')
-    .classList.add('show');
-}
+    <div class="student-summary-header">
+        <span>📊</span>
+        <h2>Sit-in Summary</h2>
+    </div>
 
-function closeNotifModal() {
-    document.getElementById('notifModal')
-    .classList.remove('show');
-}
+    <div class="student-summary-grid">
 
+        <div class="student-summary-card">
+            <div class="student-summary-icon purple">📌</div>
+            <div>
+                <p>Total Sit-ins</p>
+                <h3>{{ total_sitins }}</h3>
+            </div>
+        </div>
 
-// TABS
+        <div class="student-summary-card">
+            <div class="student-summary-icon green">✅</div>
+            <div>
+                <p>Logged Out</p>
+                <h3>{{ logged_out_sitins }}</h3>
+            </div>
+        </div>
 
-const notifTabs =
-    document.querySelectorAll('.notif-tabs button');
+        <div class="student-summary-card">
+            <div class="student-summary-icon blue">🟢</div>
+            <div>
+                <p>Active Session</p>
+                <h3>{{ active_sitins }}</h3>
+            </div>
+        </div>
 
-const notifItems =
-    document.querySelectorAll('.notif-item');
+        <div class="student-summary-card">
+            <div class="student-summary-icon yellow">⏳</div>
+            <div>
+                <p>Remaining Sessions</p>
+                <h3>{{ student.remaining_sessions }}</h3>
+            </div>
+        </div>
 
-notifTabs.forEach(tab => {
+        <div class="student-summary-card">
+            <div class="student-summary-icon pink">🕒</div>
+            <div>
+                <p>Total Sit-in Time</p>
+                <h3>{{ total_time_display }}</h3>
+            </div>
+        </div>
 
-    tab.addEventListener('click', () => {
+        <div class="student-summary-card">
+            <div class="student-summary-icon red">⭐</div>
+            <div>
+                <p>Feedback Submitted</p>
+                <h3>{{ feedback_submitted }}</h3>
+            </div>
+        </div>
 
-        notifTabs.forEach(t =>
-            t.classList.remove('active')
-        );
-
-        tab.classList.add('active');
-
-        const tabText =
-            tab.innerText.toLowerCase();
-
-        notifItems.forEach(item => {
-
-            item.style.display = 'flex';
-
-            // ALL
-            if(tabText === 'all'){
-                item.style.display = 'flex';
-            }
-
-            // UNREAD
-            else if(tabText === 'unread'){
-
-                if(!item.classList.contains('unread')){
-                    item.style.display = 'none';
-                }
-
-            }
-
-            // ANNOUNCEMENTS
-            else if(tabText === 'announcements'){
-
-                const title =
-                    item.querySelector('h4')
-                    .innerText
-                    .toLowerCase();
-
-                if(!title.includes('announcement')){
-                    item.style.display = 'none';
-                }
-
-            }
-
-            // RESERVATIONS
-            else if(tabText === 'reservations'){
-
-                const title =
-                    item.querySelector('h4')
-                    .innerText
-                    .toLowerCase();
-
-                if(!title.includes('reservation')){
-                    item.style.display = 'none';
-                }
-
-            }
-
-        });
-
-    });
-
-});
-
-
-// MARK ALL READ
-
-document.querySelector('.notif-read-btn')
-.addEventListener('click', () => {
-
-    document.querySelectorAll('.notif-item.unread')
-    .forEach(item => {
-
-        item.classList.remove('unread');
-
-        const dot = item.querySelector('.notif-dot');
-
-        if(dot){
-            dot.remove();
-        }
-
-    });
-
-});
-
-</script>
+    </div>
+</div>
 
 <script>
 const NOTIF_READ_KEY = 'ccs_student_notifications_read';
 
 function openNotifModal() {
-    document.getElementById('notifModal').classList.add('show');
+    const modal = document.getElementById('notifModal');
+
+    if (modal) {
+        modal.classList.add('show');
+    }
 }
 
 function closeNotifModal() {
-    document.getElementById('notifModal').classList.remove('show');
+    const modal = document.getElementById('notifModal');
+
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function getNotificationType(item) {
+    const dataType = item.dataset.type;
+
+    if (dataType) {
+        return dataType.toLowerCase();
+    }
+
+    const title = item.querySelector('h4');
+
+    if (!title) {
+        return '';
+    }
+
+    const titleText = title.innerText.toLowerCase();
+
+    if (titleText.includes('announcement')) {
+        return 'announcements';
+    }
+
+    if (titleText.includes('reservation')) {
+        return 'reservations';
+    }
+
+    if (titleText.includes('feedback')) {
+        return 'feedback';
+    }
+
+    return '';
 }
 
 function filterNotifications(type, button) {
@@ -520,10 +500,12 @@ function filterNotifications(type, button) {
         btn.classList.remove('active');
     });
 
-    button.classList.add('active');
+    if (button) {
+        button.classList.add('active');
+    }
 
     document.querySelectorAll('.notif-item').forEach(item => {
-        const itemType = item.dataset.type;
+        const itemType = getNotificationType(item);
 
         if (type === 'all') {
             item.style.display = 'flex';
@@ -551,11 +533,13 @@ function applyNotificationsReadUI() {
     });
 
     const notifText = document.getElementById('notifHeaderText');
+
     if (notifText) {
         notifText.innerText = 'All caught up!';
     }
 
     const notifCount = document.querySelector('.notif-count');
+
     if (notifCount) {
         notifCount.innerText = '0';
     }
@@ -567,12 +551,30 @@ function markAllNotificationsRead() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    const tabs = document.querySelectorAll('.notif-tabs button');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const tabText = this.innerText.trim().toLowerCase();
+
+            if (tabText.includes('all')) {
+                filterNotifications('all', this);
+            } else if (tabText.includes('unread')) {
+                filterNotifications('unread', this);
+            } else if (tabText.includes('announcement')) {
+                filterNotifications('announcements', this);
+            } else if (tabText.includes('reservation')) {
+                filterNotifications('reservations', this);
+            }
+        });
+    });
+
     if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
         applyNotificationsReadUI();
     }
 });
 
-window.addEventListener('click', function(e) {
+window.addEventListener('click', function (e) {
     const modal = document.getElementById('notifModal');
 
     if (e.target === modal) {
@@ -580,5 +582,3 @@ window.addEventListener('click', function(e) {
     }
 });
 </script>
-</body>
-</html>

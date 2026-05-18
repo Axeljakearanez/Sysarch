@@ -163,11 +163,12 @@
         </div>
 
         <div class="notif-tabs">
-            <button class="active" onclick="filterNotifications('all', this)">All</button>
-            <button onclick="filterNotifications('unread', this)">Unread</button>
-            <button onclick="filterNotifications('announcements', this)">Announcements</button>
-            <button onclick="filterNotifications('reservations', this)">Reservations</button>
-        </div>
+    <button class="active" onclick="filterNotifications('all', this)">All</button>
+    <button onclick="filterNotifications('unread', this)">Unread</button>
+    <button onclick="filterNotifications('announcements', this)">Announcements</button>
+    <button onclick="filterNotifications('reservations', this)">Reservations</button>
+    <button onclick="filterNotifications('feedback', this)">Feedback</button>
+</div>
 
         <div class="notif-list">
 
@@ -256,13 +257,60 @@
 
 <script>
 const NOTIF_READ_KEY = 'ccs_student_notifications_read';
+const NOTIF_SIGNATURE_KEY = 'ccs_student_notifications_signature';
 
 function openNotifModal() {
-    document.getElementById('notifModal').classList.add('show');
+    const modal = document.getElementById('notifModal');
+
+    if (modal) {
+        modal.classList.add('show');
+    }
 }
 
 function closeNotifModal() {
-    document.getElementById('notifModal').classList.remove('show');
+    const modal = document.getElementById('notifModal');
+
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function getNotificationSignature() {
+    const items = Array.from(document.querySelectorAll('.notif-item'));
+
+    return items.map(item => {
+        return item.innerText.trim().replace(/\s+/g, ' ');
+    }).join('|');
+}
+
+function getNotificationType(item) {
+    const dataType = item.dataset.type;
+
+    if (dataType) {
+        return dataType.toLowerCase();
+    }
+
+    const title = item.querySelector('h4');
+
+    if (!title) {
+        return '';
+    }
+
+    const titleText = title.innerText.toLowerCase();
+
+    if (titleText.includes('announcement')) {
+        return 'announcements';
+    }
+
+    if (titleText.includes('reservation')) {
+        return 'reservations';
+    }
+
+    if (titleText.includes('feedback')) {
+        return 'feedback';
+    }
+
+    return '';
 }
 
 function filterNotifications(type, button) {
@@ -270,10 +318,12 @@ function filterNotifications(type, button) {
         btn.classList.remove('active');
     });
 
-    button.classList.add('active');
+    if (button) {
+        button.classList.add('active');
+    }
 
     document.querySelectorAll('.notif-item').forEach(item => {
-        const itemType = item.dataset.type;
+        const itemType = getNotificationType(item);
 
         if (type === 'all') {
             item.style.display = 'flex';
@@ -301,24 +351,51 @@ function applyNotificationsReadUI() {
     });
 
     const notifText = document.getElementById('notifHeaderText');
+
     if (notifText) {
         notifText.innerText = 'All caught up!';
     }
 
     const notifCount = document.querySelector('.notif-count');
+
     if (notifCount) {
         notifCount.innerText = '0';
     }
 }
 
+function showUnreadBadgeUI() {
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = 'inline-flex';
+    }
+
+    const notifText = document.getElementById('notifHeaderText');
+
+    if (notifText) {
+        notifText.innerText = 'You have unread notifications';
+    }
+}
+
 function markAllNotificationsRead() {
+    const currentSignature = getNotificationSignature();
+
     localStorage.setItem(NOTIF_READ_KEY, 'yes');
+    localStorage.setItem(NOTIF_SIGNATURE_KEY, currentSignature);
+
     applyNotificationsReadUI();
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    if (localStorage.getItem(NOTIF_READ_KEY) === 'yes') {
+    const currentSignature = getNotificationSignature();
+    const savedSignature = localStorage.getItem(NOTIF_SIGNATURE_KEY);
+    const isMarkedRead = localStorage.getItem(NOTIF_READ_KEY) === 'yes';
+
+    if (isMarkedRead && savedSignature === currentSignature) {
         applyNotificationsReadUI();
+    } else {
+        localStorage.removeItem(NOTIF_READ_KEY);
+        showUnreadBadgeUI();
     }
 });
 
