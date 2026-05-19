@@ -8002,6 +8002,8 @@ body.dark .star-btn.hovered{
 .notif-modal-v2{
     width: 92%;
     max-width: 760px;
+
+    height: 82vh;
     max-height: 82vh;
 
     overflow: hidden;
@@ -8023,7 +8025,11 @@ body.dark .star-btn.hovered{
     transform: translateY(25px) scale(0.96);
 
     transition: 0.25s ease;
+
+    display: flex;
+    flex-direction: column;
 }
+
 
 .notif-overlay.show .notif-modal-v2{
     transform: translateY(0) scale(1);
@@ -8047,6 +8053,8 @@ body.dark .star-btn.hovered{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+
+    flex-shrink: 0;
 }
 
 .notif-v2-header h2{
@@ -9260,4 +9268,1338 @@ body.dark .student-summary-card h3 {
     .student-summary-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* =========================
+   NOTIFICATION MODAL SCROLL FIX
+========================= */
+
+.notif-tabs {
+    flex-shrink: 0;
+}
+
+.notif-list {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+}
+
+.notif-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.notif-list::-webkit-scrollbar-track {
+    background: rgba(75, 45, 143, 0.08);
+    border-radius: 999px;
+}
+
+.notif-list::-webkit-scrollbar-thumb {
+    background: #4B2D8F;
+    border-radius: 999px;
+}
+
+.notif-list::-webkit-scrollbar-thumb:hover {
+    background: #F5B000;
+}
+
+/* =========================
+   GLOBAL RESERVATION TOGGLE
+========================= */
+
+.armgmt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.armgmt-toggle-form {
+    margin-left: auto;
+}
+
+.armgmt-reservation-toggle {
+    border: none;
+    outline: none;
+    border-radius: 14px;
+    padding: 13px 22px;
+    font-size: 0.92rem;
+    font-weight: 900;
+    cursor: pointer;
+    color: #ffffff;
+    box-shadow: 0 12px 28px rgba(35, 22, 70, 0.18);
+    transition: 0.25s ease;
+}
+
+.armgmt-reservation-toggle:hover {
+    transform: translateY(-2px);
+}
+
+.armgmt-reservation-toggle.enabled {
+    background: linear-gradient(90deg, #11998e, #38ef7d);
+}
+
+.armgmt-reservation-toggle.disabled {
+    background: linear-gradient(90deg, #dc2626, #fb7185);
+}
+
+.rsv-disabled-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 22px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fff1f2, #ffe4e6);
+    border: 1px solid #fecdd3;
+    border-left: 6px solid #e11d48;
+    color: #7f1d1d;
+    box-shadow: 0 10px 24px rgba(225, 29, 72, 0.08);
+}
+
+.rsv-disabled-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(225, 29, 72, 0.12);
+    font-size: 1.35rem;
+}
+
+.rsv-disabled-banner strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 3px;
+}
+
+.rsv-disabled-banner p {
+    margin: 0;
+    color: #9f1239;
+    font-size: 0.9rem;
+}
+
+.rsv-submit-btn:disabled,
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+}
+
+/* DARK MODE */
+body.dark .rsv-disabled-banner,
+html.dark .rsv-disabled-banner {
+    background: linear-gradient(180deg, #3b1620, #2a1118);
+    border-color: rgba(251, 113, 133, 0.35);
+    border-left-color: #fb7185;
+    color: #ffe4e6;
+}
+
+body.dark .rsv-disabled-banner p,
+html.dark .rsv-disabled-banner p {
+    color: #fecdd3;
+}
+
+/* =========================
+   STUDENT RESERVATION SOFTWARE BOX
+========================= */
+
+.rsv-software-box {
+    margin-top: 22px;
+    border-radius: 22px;
+    border: 1px solid #ddd4f4;
+    background: linear-gradient(180deg, #ffffff, #faf8ff);
+    box-shadow: 0 12px 28px rgba(75, 45, 143, 0.08);
+    overflow: hidden;
+    animation: rsvFadeIn 0.25s ease;
+}
+
+.rsv-software-head {
+    padding: 18px 20px;
+    background: linear-gradient(90deg, #221735, #4b2d8f);
+    color: #ffffff;
+}
+
+.rsv-software-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 900;
+}
+
+.rsv-software-head p {
+    margin: 5px 0 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.88rem;
+}
+
+.rsv-software-list {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.rsv-software-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 15px;
+    border-radius: 16px;
+    background: #f8f6ff;
+    border: 1px solid #e5ddfb;
+    transition: 0.22s ease;
+}
+
+.rsv-software-item:hover {
+    transform: translateY(-2px);
+    border-color: #cdbfff;
+    box-shadow: 0 10px 20px rgba(75, 45, 143, 0.1);
+}
+
+.rsv-software-name {
+    font-weight: 900;
+    color: #211633;
+    font-size: 0.95rem;
+}
+
+.rsv-software-version {
+    display: inline-flex;
+    margin-top: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eef0f6;
+    color: #4b5563;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.rsv-software-status {
+    white-space: nowrap;
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.rsv-software-status.available {
+    background: #e6f8ef;
+    color: #07835f;
+}
+
+.rsv-software-status.warning {
+    background: #fff5d6;
+    color: #9a6700;
+}
+
+.rsv-software-empty {
+    grid-column: 1 / -1;
+    padding: 22px;
+    text-align: center;
+    border-radius: 16px;
+    background: #f8f6ff;
+    border: 1px dashed #d8cff2;
+    color: #74698e;
+    font-weight: 800;
+}
+
+@keyframes rsvFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* DARK MODE */
+html.dark .rsv-software-box,
+body.dark .rsv-software-box {
+    background: linear-gradient(180deg, #1b1430, #120d22);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.dark .rsv-software-item,
+body.dark .rsv-software-item,
+html.dark .rsv-software-empty,
+body.dark .rsv-software-empty {
+    background: #171127;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #d8cff5;
+}
+
+html.dark .rsv-software-name,
+body.dark .rsv-software-name {
+    color: #f4efff;
+}
+
+html.dark .rsv-software-version,
+body.dark .rsv-software-version {
+    background: rgba(255, 255, 255, 0.08);
+    color: #d9d3ef;
+}
+
+/* =========================
+   ADMIN SOFTWARE TAB + MODAL
+   Purple + Gold UI
+========================= */
+
+.armgmt-software-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 18px;
+    margin: 20px 0 22px;
+    flex-wrap: wrap;
+}
+
+
+
+
+.armgmt-version-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    font-weight: 900;
+    background: #eef0f6;
+    color: #374151;
+}
+
+/* Modal overlay */
+.software-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(14, 8, 32, 0.52);
+    backdrop-filter: blur(10px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    z-index: 999999;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: 0.25s ease;
+}
+
+.software-modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Modal card */
+.software-modal {
+    width: 92%;
+    max-width: 540px;
+
+    background: linear-gradient(180deg, #ffffff, #faf7ff);
+    border: 1px solid #ddd4f4;
+    border-radius: 28px;
+    overflow: hidden;
+
+    box-shadow: 0 28px 80px rgba(36, 20, 75, 0.35);
+
+    transform: translateY(18px) scale(0.98);
+    transition: 0.25s ease;
+}
+
+.software-modal-overlay.show .software-modal {
+    transform: translateY(0) scale(1);
+}
+
+/* Modal header */
+.software-modal-header {
+    padding: 24px 28px;
+    background: linear-gradient(90deg, #221735, #4b2d8f);
+    color: #ffffff;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+
+    border-bottom: 3px solid #f5b000;
+}
+
+.software-modal-header h3 {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+}
+
+.software-modal-header p {
+    margin: 6px 0 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+}
+
+.software-modal-close {
+    width: 44px;
+    height: 44px;
+
+    border: none;
+    border-radius: 15px;
+
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+
+    transition: 0.22s ease;
+}
+
+.software-modal-close:hover {
+    background: #f5b000;
+    color: #221735;
+    transform: rotate(90deg);
+}
+
+/* Form */
+.software-modal-form {
+    padding: 26px 28px 28px;
+}
+
+.software-field {
+    margin-bottom: 17px;
+}
+
+.software-field label {
+    display: block;
+    margin-bottom: 8px;
+
+    font-size: 0.84rem;
+    font-weight: 900;
+    color: #372757;
+    letter-spacing: 0.04em;
+}
+
+.software-field input,
+.software-field select {
+    width: 100%;
+    padding: 14px 15px;
+
+    border-radius: 15px;
+    border: 1px solid #dcd3f3;
+
+    background: #ffffff;
+    color: #24183d;
+
+    font-size: 0.95rem;
+    font-weight: 700;
+
+    outline: none;
+    transition: 0.2s ease;
+}
+
+.software-field input:focus,
+.software-field select:focus {
+    border-color: #6d55d8;
+    box-shadow: 0 0 0 4px rgba(109, 85, 216, 0.14);
+}
+
+.software-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.software-btn-cancel,
+.software-btn-save {
+    border: none;
+    border-radius: 14px;
+    padding: 13px 20px;
+
+    font-weight: 900;
+    cursor: pointer;
+
+    transition: 0.22s ease;
+}
+
+.software-btn-cancel {
+    background: #f2effa;
+    color: #4b3c70;
+}
+
+.software-btn-save {
+    background: linear-gradient(90deg, #f5b000, #ffcc3d);
+    color: #231735;
+    box-shadow: 0 10px 22px rgba(245, 176, 0, 0.25);
+}
+
+.software-btn-cancel:hover,
+.software-btn-save:hover {
+    transform: translateY(-2px);
+}
+
+/* Dark mode */
+html.dark .software-modal,
+body.dark .software-modal {
+    background: linear-gradient(180deg, #1b1430, #120d22);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+html.dark .software-field label,
+body.dark .software-field label {
+    color: #eee7ff;
+}
+
+html.dark .software-field input,
+html.dark .software-field select,
+body.dark .software-field input,
+body.dark .software-field select {
+    background: #120d22;
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f4efff;
+}
+
+html.dark .software-btn-cancel,
+body.dark .software-btn-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #eee7ff;
+}
+
+/* =========================================
+   SOFTWARE ACTION BUTTONS ARRANGED
+========================================= */
+
+.armgmt-software-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 18px 0 22px;
+}
+
+.armgmt-add-software-btn,
+.armgmt-import-software-btn {
+    min-width: 215px;
+    height: 56px;
+    border: none;
+    border-radius: 16px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.22s ease;
+}
+
+/* Add Software Button - Purple + Gold */
+.armgmt-add-software-btn {
+    border: 1px solid rgba(245, 176, 0, 0.45);
+    border-radius: 18px;
+    padding: 15px 28px;
+
+    min-width: 230px;
+    height: 58px;
+
+    background: linear-gradient(
+        135deg,
+        #221735 0%,
+        #4B2D8F 58%,
+        #F5B000 145%
+    );
+
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 14px 30px rgba(75, 45, 143, 0.30),
+        0 0 0 1px rgba(255,255,255,0.06) inset;
+
+    transition: 0.25s ease;
+}
+
+.armgmt-add-software-btn:hover {
+    transform: translateY(-2px);
+    color: #F5B000;
+    border-color: #F5B000;
+
+    box-shadow:
+        0 18px 38px rgba(75, 45, 143, 0.38),
+        0 0 24px rgba(245, 176, 0, 0.25),
+        inset 0 0 0 1px rgba(245, 176, 0, 0.16);
+}
+
+.armgmt-add-software-btn:active {
+    transform: scale(0.98);
+}
+
+/* Dark mode */
+html.dark .armgmt-add-software-btn,
+body.dark .armgmt-add-software-btn {
+    background: linear-gradient(
+        135deg,
+        #120d22 0%,
+        #4B2D8F 62%,
+        #F5B000 155%
+    );
+    color: #ffffff;
+    border-color: rgba(245, 176, 0, 0.50);
+}
+
+html.dark .armgmt-add-software-btn:hover,
+body.dark .armgmt-add-software-btn:hover {
+    color: #F5B000;
+    border-color: #F5B000;
+    box-shadow:
+        0 18px 38px rgba(0, 0, 0, 0.45),
+        0 0 26px rgba(245, 176, 0, 0.28);
+}
+
+
+
+
+
+/* =========================================
+   SOFTWARE IMPORT MODAL FIXED LAYOUT
+   LIGHT + DARK MODE
+========================================= */
+
+.software-import-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 6, 24, 0.62);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    z-index: 99999;
+    transition: 0.25s ease;
+}
+
+.software-import-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.software-import-modal {
+    width: min(720px, 96vw);
+    max-height: calc(100vh - 48px);
+
+    border-radius: 26px;
+    overflow: hidden;
+
+    background: linear-gradient(180deg, #ffffff, #fbf9ff);
+    border: 1px solid #e5dafa;
+
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+
+    display: flex;
+    flex-direction: column;
+
+    animation: softwareImportPop 0.25s ease;
+}
+
+@keyframes softwareImportPop {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+
+.software-import-header h3 {
+    font-size: 1.25rem;
+    font-weight: 900;
+    margin-bottom: 5px;
+}
+
+.software-import-header p {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.88);
+    font-weight: 600;
+}
+
+.software-import-close {
+    width: 40px;
+    height: 40px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.18);
+    color: #ffffff;
+
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.software-import-close:hover {
+    background: rgba(255,255,255,0.28);
+    transform: rotate(90deg);
+}
+
+.software-import-form {
+    padding: 24px 28px 28px;
+    overflow-y: auto;
+}
+
+.software-import-form::-webkit-scrollbar {
+    width: 8px;
+}
+
+.software-import-form::-webkit-scrollbar-thumb {
+    background: rgba(75, 45, 143, 0.35);
+    border-radius: 999px;
+}
+
+.software-import-types {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.software-import-type {
+    min-height: 110px;
+    padding: 16px 12px;
+
+    border-radius: 18px;
+    border: 1px solid #d8ecdf;
+
+    background: #f8fffb;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    text-align: center;
+}
+
+.software-import-type.pdf {
+    border-color: #ffd5dc;
+    background: #fff7f8;
+}
+
+.software-import-type.disabled {
+    opacity: 0.65;
+}
+
+.software-import-icon {
+    font-size: 1.9rem;
+}
+
+.software-import-type strong {
+    color: #1f2937;
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.software-import-type span {
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.software-import-help {
+    padding: 16px 18px;
+    margin-bottom: 22px;
+
+    border-radius: 18px;
+    border: 1px solid #dbe4ff;
+
+    background: linear-gradient(180deg, #f8faff, #f4f6ff);
+}
+
+.software-import-help strong {
+    display: block;
+    color: #5b63d6;
+    font-size: 0.92rem;
+    margin-bottom: 12px;
+}
+
+.software-import-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.software-import-columns span {
+    padding: 7px 12px;
+    border-radius: 9px;
+
+    background: #eef2ff;
+    color: #5b63d6;
+
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.software-import-help p {
+    color: #64748b;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.software-dropzone {
+    min-height: 185px;
+    padding: 24px;
+
+    border-radius: 24px;
+    
+
+    
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    text-align: center;
+    cursor: pointer;
+
+    transition: 0.22s ease;
+}
+
+
+.software-dropzone input {
+    display: none;
+}
+
+.software-drop-icon {
+    font-size: 3rem;
+}
+
+.software-dropzone h4 {
+    color: #151827;
+    font-size: 1.02rem;
+    font-weight: 900;
+}
+
+.software-dropzone p {
+    color: #94a3b8;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.software-import-actions {
+    margin-top: 24px;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+
+    position: sticky;
+    bottom: 0;
+
+    padding-top: 14px;
+    background: linear-gradient(180deg, transparent, #fbf9ff 35%);
+}
+
+.software-import-cancel,
+.software-import-submit {
+    border: none;
+    border-radius: 14px;
+    padding: 13px 24px;
+
+    font-size: 0.92rem;
+    font-weight: 900;
+
+    cursor: pointer;
+    transition: 0.22s ease;
+}
+
+.software-import-cancel {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+
+
+.software-import-cancel:hover,
+.software-import-submit:hover {
+    transform: translateY(-2px);
+}
+
+
+/* =========================================
+   DARK MODE COMPATIBLE WITH darkmode.js
+========================================= */
+
+html.dark .software-import-modal,
+body.dark .software-import-modal {
+    background: linear-gradient(180deg, #171126, #100b1d);
+    border-color: rgba(245,176,0,0.16);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.65);
+}
+
+html.dark .software-import-type,
+body.dark .software-import-type {
+    background: #171126;
+    border-color: rgba(255,255,255,0.10);
+}
+
+html.dark .software-import-type.pdf,
+body.dark .software-import-type.pdf {
+    background: #211322;
+    border-color: rgba(255,120,140,0.22);
+}
+
+html.dark .software-import-type strong,
+body.dark .software-import-type strong,
+html.dark .software-dropzone h4,
+body.dark .software-dropzone h4 {
+    color: #f8f5ff;
+}
+
+html.dark .software-import-type span,
+body.dark .software-import-type span,
+html.dark .software-dropzone p,
+body.dark .software-dropzone p,
+html.dark .software-import-help p,
+body.dark .software-import-help p {
+    color: #cfc7df;
+}
+
+html.dark .software-import-help,
+body.dark .software-import-help {
+    background: #171126;
+    border-color: rgba(245,176,0,0.16);
+}
+
+html.dark .software-import-help strong,
+body.dark .software-import-help strong {
+    color: #F5B000;
+}
+
+html.dark .software-import-columns span,
+body.dark .software-import-columns span {
+    background: rgba(245,176,0,0.12);
+    color: #F5B000;
+}
+
+html.dark .software-import-actions,
+body.dark .software-import-actions {
+    background: linear-gradient(180deg, transparent, #100b1d 35%);
+}
+
+html.dark .software-import-cancel,
+body.dark .software-import-cancel {
+    background: rgba(255,255,255,0.08);
+    color: #eee7ff;
+    border-color: rgba(255,255,255,0.12);
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 760px) {
+    .software-import-overlay {
+        padding: 14px;
+    }
+
+    .software-import-types {
+        grid-template-columns: 1fr;
+    }
+
+    .software-import-actions {
+        flex-direction: column;
+    }
+
+    .software-import-cancel,
+    .software-import-submit {
+        width: 100%;
+    }
+
+    .armgmt-software-actions {
+        justify-content: stretch;
+    }
+
+    .armgmt-add-software-btn,
+    .armgmt-import-software-btn {
+        width: 100%;
+    }
+}
+
+/* =========================================
+   SOFTWARE FILTER - PURPLE/GOLD UI
+========================================= */
+
+.armgmt-software-filter {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.armgmt-software-filter label {
+    color: #6f6885;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.armgmt-software-select-wrap {
+    position: relative;
+}
+
+.armgmt-software-select-wrap::after {
+    content: "⌄";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-55%);
+    color: #F5B000;
+    font-size: 1.1rem;
+    font-weight: 900;
+    pointer-events: none;
+}
+
+.armgmt-software-select-wrap select {
+    appearance: none;
+    -webkit-appearance: none;
+
+    height: 54px;
+    min-width: 150px;
+
+    padding: 0 46px 0 18px;
+
+    border-radius: 14px;
+    border: 1px solid #ddd3f5;
+
+    background: linear-gradient(180deg, #ffffff, #faf7ff);
+    color: #241638;
+
+    font-size: 0.95rem;
+    font-weight: 800;
+
+    outline: none;
+    cursor: pointer;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.03),
+        0 8px 18px rgba(75,45,143,0.08);
+
+    transition: 0.22s ease;
+}
+
+.armgmt-software-select-wrap select option {
+    background: #ffffff;
+    color: #241638;
+}
+
+.armgmt-software-select-wrap select:hover {
+    border-color: rgba(245, 176, 0, 0.55);
+    box-shadow:
+        0 0 0 4px rgba(245, 176, 0, 0.08),
+        0 10px 22px rgba(75,45,143,0.12);
+}
+
+.armgmt-software-select-wrap select:focus {
+    border-color: #F5B000;
+    box-shadow:
+        0 0 0 4px rgba(245, 176, 0, 0.14),
+        0 12px 26px rgba(75, 45, 143, 0.18);
+}
+
+/* DARK MODE VERSION */
+html.dark .armgmt-software-filter label,
+body.dark .armgmt-software-filter label {
+    color: #f8f5ff !important;
+}
+
+html.dark .armgmt-software-select-wrap select,
+body.dark .armgmt-software-select-wrap select {
+    background: linear-gradient(180deg, #171126, #100b1d) !important;
+    color: #f8f5ff !important;
+    border-color: rgba(245, 176, 0, 0.35) !important;
+}
+
+html.dark .armgmt-software-select-wrap select option,
+body.dark .armgmt-software-select-wrap select option {
+    background: #171126 !important;
+    color: #f8f5ff !important;
+}
+
+html.dark .armgmt-software-select-wrap::after,
+body.dark .armgmt-software-select-wrap::after {
+    color: #F5B000 !important;
+}
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+    .armgmt-software-filter {
+        width: 100%;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .armgmt-software-select-wrap,
+    .armgmt-software-select-wrap select {
+        width: 100%;
+    }
+}
+
+/* =================================================
+   FINAL CLEAN OVERRIDE
+   SOFTWARE IMPORT MODAL - PURPLE + GOLD
+================================================= */
+
+.armgmt-import-software-btn {
+    min-width: 230px;
+    height: 58px;
+    border: 1px solid rgba(245, 176, 0, 0.45);
+    border-radius: 18px;
+    padding: 15px 28px;
+
+    background: linear-gradient(
+        135deg,
+        #221735 0%,
+        #4B2D8F 60%,
+        #F5B000 150%
+    );
+
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+
+    box-shadow:
+        0 14px 30px rgba(75, 45, 143, 0.30),
+        0 0 0 1px rgba(255,255,255,0.06) inset;
+
+    transition: 0.25s ease;
+}
+
+.armgmt-import-software-btn:hover {
+    transform: translateY(-2px);
+    color: #F5B000;
+    border-color: #F5B000;
+    box-shadow:
+        0 18px 38px rgba(75, 45, 143, 0.38),
+        0 0 24px rgba(245, 176, 0, 0.25);
+}
+
+.software-import-header {
+    background: linear-gradient(90deg, #221735, #4B2D8F) !important;
+    color: #ffffff !important;
+
+    padding: 24px 28px;
+    min-height: 110px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    border-bottom: 4px solid #F5B000 !important;
+    flex-shrink: 0;
+}
+
+.software-import-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.software-import-header h3 {
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: 1.35rem;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+}
+
+.software-import-header p {
+    margin: 0 !important;
+    color: rgba(255, 255, 255, 0.82) !important;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.software-import-close {
+    width: 46px;
+    height: 46px;
+
+    border: 1px solid rgba(245, 176, 0, 0.35) !important;
+    border-radius: 16px;
+
+    background: rgba(245, 176, 0, 0.14) !important;
+    color: #ffffff !important;
+
+    font-size: 1.7rem;
+    font-weight: 900;
+    line-height: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    flex-shrink: 0;
+
+    transition: 0.22s ease;
+}
+
+.software-import-close:hover {
+    background: #F5B000 !important;
+    color: #221735 !important;
+    transform: rotate(90deg);
+}
+
+.software-import-type {
+    background: linear-gradient(180deg, #ffffff, #faf7ff) !important;
+    border: 1px solid #e4d8fb !important;
+}
+
+.software-import-type strong {
+    color: #2b1f4d !important;
+}
+
+.software-import-type span {
+    color: #6f6885 !important;
+}
+
+.software-import-help {
+    background: linear-gradient(180deg, #fffdf7, #faf7ff) !important;
+    border: 1px solid rgba(245, 176, 0, 0.28) !important;
+}
+
+.software-import-help strong {
+    color: #4B2D8F !important;
+}
+
+.software-import-columns span {
+    background: rgba(245, 176, 0, 0.14) !important;
+    color: #4B2D8F !important;
+    border: 1px solid rgba(245, 176, 0, 0.18);
+}
+
+.software-dropzone {
+    background: linear-gradient(180deg, #ffffff, #fffcf5) !important;
+    border: 2px dashed rgba(245, 176, 0, 0.70) !important;
+}
+
+.software-dropzone:hover {
+    background: #fff9eb !important;
+    border-color: #F5B000 !important;
+    box-shadow: 0 0 0 5px rgba(245, 176, 0, 0.10);
+    transform: translateY(-2px);
+}
+
+.software-dropzone h4 {
+    color: #241638 !important;
+}
+
+.software-dropzone p {
+    color: #7b748f !important;
+}
+
+.software-import-submit {
+    background: linear-gradient(90deg, #221735, #4B2D8F) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(245, 176, 0, 0.40) !important;
+    box-shadow:
+        0 12px 26px rgba(75, 45, 143, 0.28),
+        0 0 18px rgba(245, 176, 0, 0.14) !important;
+}
+
+.software-import-submit:hover {
+    color: #F5B000 !important;
+    border-color: #F5B000 !important;
+    box-shadow:
+        0 16px 34px rgba(75, 45, 143, 0.36),
+        0 0 24px rgba(245, 176, 0, 0.25) !important;
+}
+
+
+.software-import-submit {
+    background: linear-gradient(90deg, #221735, #4B2D8F) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(245, 176, 0, 0.40) !important;
+    box-shadow:
+        0 12px 26px rgba(75, 45, 143, 0.28),
+        0 0 18px rgba(245, 176, 0, 0.14) !important;
+}
+
+.software-import-submit:hover {
+    color: #F5B000 !important;
+    border-color: #F5B000 !important;
+    box-shadow:
+        0 16px 34px rgba(75, 45, 143, 0.36),
+        0 0 24px rgba(245, 176, 0, 0.25) !important;
+}
+
+/* DARK MODE FINAL OVERRIDE */
+html.dark .armgmt-import-software-btn,
+body.dark .armgmt-import-software-btn {
+    background: linear-gradient(
+        135deg,
+        #120d22 0%,
+        #4B2D8F 62%,
+        #F5B000 155%
+    ) !important;
+    color: #ffffff !important;
+    border-color: rgba(245, 176, 0, 0.50) !important;
+}
+
+html.dark .software-import-header,
+body.dark .software-import-header {
+    background: linear-gradient(90deg, #120d22, #4B2D8F) !important;
+    border-bottom-color: #F5B000 !important;
+}
+
+html.dark .software-import-help,
+body.dark .software-import-help,
+html.dark .software-import-type,
+body.dark .software-import-type {
+    background: linear-gradient(180deg, #171126, #100b1d) !important;
+    border-color: rgba(245, 176, 0, 0.22) !important;
+}
+
+html.dark .software-dropzone,
+body.dark .software-dropzone {
+    background: linear-gradient(180deg, #120d22, #171126) !important;
+    border-color: rgba(245, 176, 0, 0.55) !important;
+}
+
+html.dark .software-dropzone:hover,
+body.dark .software-dropzone:hover {
+    background: #171126 !important;
+    border-color: #F5B000 !important;
 }

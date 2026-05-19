@@ -17,42 +17,46 @@
     <div class="nav-links">
         <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
             Notification
-            {% if notif_reservations|length + feedback_notifications|length > 0 %}
+
+            {% set reservation_system_notice = reservation_setting and reservation_setting.message %}
+
+            {% if notif_reservations|length + feedback_notifications|length > 0 or reservation_system_notice %}
                 <span class="notif-alert-badge">!</span>
             {% endif %}
         </a>
+
         <a href="{{ url_for('dashboard') }}">Home</a>
         <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
         <a href="{{ url_for('history') }}" class="nav-active">History</a>
         <a href="{{ url_for('reservation') }}">Reservation</a>
         <a href="{{ url_for('logout') }}">Logout</a>
-    
-            <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
-        </div>
+
+        <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
+    </div>
 </nav>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="flash-wrapper">
-      {% for category, message in messages %}
-        <div class="flash-alert flash-{{ category }}" id="flashAlert">
-          {{ message }}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash-alert flash-{{ category }}" id="flashAlert">
+                    {{ message }}
+                </div>
+            {% endfor %}
         </div>
-      {% endfor %}
-    </div>
 
-    <script>
-      setTimeout(() => {
-        const alertBox = document.getElementById('flashAlert');
-        if (alertBox) alertBox.classList.add('hide');
-      }, 2000);
+        <script>
+            setTimeout(() => {
+                const alertBox = document.getElementById('flashAlert');
+                if (alertBox) alertBox.classList.add('hide');
+            }, 2000);
 
-      setTimeout(() => {
-        const alertBox = document.getElementById('flashAlert');
-        if (alertBox) alertBox.remove();
-      }, 2500);
-    </script>
-  {% endif %}
+            setTimeout(() => {
+                const alertBox = document.getElementById('flashAlert');
+                if (alertBox) alertBox.remove();
+            }, 2500);
+        </script>
+    {% endif %}
 {% endwith %}
 
 <div class="history-page-wrap">
@@ -66,14 +70,17 @@
             <div class="history-stat-label">Total History</div>
             <div class="history-stat-value">{{ total_history }}</div>
         </div>
+
         <div class="history-stat-card">
             <div class="history-stat-label">Logged Out Records</div>
             <div class="history-stat-value">{{ logged_out_count }}</div>
         </div>
+
         <div class="history-stat-card">
             <div class="history-stat-label">Pending Feedback</div>
             <div class="history-stat-value">{{ pending_feedback_count }}</div>
         </div>
+
         <div class="history-stat-card">
             <div class="history-stat-label">Submitted Feedback</div>
             <div class="history-stat-value">{{ submitted_feedback_count }}</div>
@@ -121,6 +128,7 @@
                         <td>{{ record.purpose }}</td>
                         <td>{{ record.sit_lab }}</td>
                         <td><span class="session-pill">{{ record.session }}</span></td>
+
                         <td>
                             {% if record.status == 'Logged Out' %}
                                 <span class="status-logout">Logged Out</span>
@@ -128,8 +136,10 @@
                                 <span class="status-active">Active</span>
                             {% endif %}
                         </td>
+
                         <td class="time-cell">{{ record.login_time if record.login_time else '-' }}</td>
                         <td class="time-cell">{{ record.logout_time if record.logout_time else '-' }}</td>
+
                         <td>
                             {% if record.status == 'Logged Out' %}
                                 {% if record.id in submitted_feedback_ids %}
@@ -177,7 +187,6 @@
         <form method="POST" id="feedbackForm">
             <div class="sitin-modal-body">
 
-                <!-- Session context banner -->
                 <div class="feedback-context-banner">
                     <div class="feedback-context-item">
                         <div class="feedback-context-icon">
@@ -185,6 +194,7 @@
                                 <path d="M1.5 2.5h9v1h-9zm0 3h7v1h-7zm0 3h5v1h-5z" fill="currentColor"/>
                             </svg>
                         </div>
+
                         <div class="feedback-context-text">
                             <span class="feedback-context-label">Purpose</span>
                             <span class="feedback-context-value" id="feedbackPurpose">—</span>
@@ -200,6 +210,7 @@
                                 <path d="M4 5h4M4 7.5h2.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
                             </svg>
                         </div>
+
                         <div class="feedback-context-text">
                             <span class="feedback-context-label">Lab</span>
                             <span class="feedback-context-value" id="feedbackLab">—</span>
@@ -207,10 +218,11 @@
                     </div>
                 </div>
 
-                <!-- Star rating -->
                 <div class="field-wrap">
                     <label class="field-label">Rating</label>
+
                     <input type="hidden" name="rating" id="ratingInput" value="" required>
+
                     <div class="star-rating-row" id="starRow">
                         <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
                         <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
@@ -218,10 +230,10 @@
                         <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
                         <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
                     </div>
+
                     <span class="star-rating-label" id="starLabel">Select a rating</span>
                 </div>
 
-                <!-- Feedback textarea -->
                 <div class="field-wrap">
                     <label class="field-label">Feedback</label>
                     <textarea
@@ -244,21 +256,23 @@
 </div>
 
 <script>
-/* ── Table filter ── */
-const historySearch        = document.getElementById('historySearch');
+/* TABLE FILTER */
+const historySearch = document.getElementById('historySearch');
 const historyEntriesSelect = document.getElementById('entriesSelect');
-const historyTable         = document.getElementById('historyTable');
-const historyCountText     = document.getElementById('historyCountText');
+const historyTable = document.getElementById('historyTable');
+const historyCountText = document.getElementById('historyCountText');
 
 function updateHistoryTable() {
     const keyword = historySearch.value.toLowerCase().trim();
-    const limit   = parseInt(historyEntriesSelect.value, 10);
-    const rows    = Array.from(historyTable.querySelectorAll('tbody tr'));
-    let visible   = 0;
+    const limit = parseInt(historyEntriesSelect.value, 10);
+    const rows = Array.from(historyTable.querySelectorAll('tbody tr'));
+    let visible = 0;
 
     rows.forEach(row => {
         if (row.querySelector('.empty-records-state')) return;
+
         const text = row.innerText.toLowerCase();
+
         if (text.includes(keyword) && visible < limit) {
             row.style.display = '';
             visible++;
@@ -274,14 +288,14 @@ historySearch.addEventListener('keyup', updateHistoryTable);
 historyEntriesSelect.addEventListener('change', updateHistoryTable);
 updateHistoryTable();
 
-/* ── Feedback modal open / close ── */
+/* FEEDBACK MODAL */
 function openFeedbackModal(recordId, purpose, lab) {
     const modal = document.getElementById('feedbackModal');
-    const form  = document.getElementById('feedbackForm');
+    const form = document.getElementById('feedbackForm');
 
     form.action = `/submit_feedback/${recordId}`;
     document.getElementById('feedbackPurpose').textContent = purpose;
-    document.getElementById('feedbackLab').textContent     = lab;
+    document.getElementById('feedbackLab').textContent = lab;
 
     resetStars();
 
@@ -292,7 +306,9 @@ function openFeedbackModal(recordId, purpose, lab) {
 function closeFeedbackModal() {
     const modal = document.getElementById('feedbackModal');
     modal.classList.remove('show');
-    setTimeout(() => { modal.style.display = 'none'; }, 180);
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 180);
 }
 
 window.addEventListener('click', function (e) {
@@ -300,14 +316,15 @@ window.addEventListener('click', function (e) {
     if (e.target === modal) closeFeedbackModal();
 });
 
-/* ── Star rating ── */
+/* STAR RATING */
 const ratingLabels = ['', '1 — Poor', '2 — Fair', '3 — Good', '4 — Very Good', '5 — Excellent'];
-let currentRating  = 0;
+let currentRating = 0;
 
 function resetStars() {
     currentRating = 0;
-    document.getElementById('ratingInput').value     = '';
+    document.getElementById('ratingInput').value = '';
     document.getElementById('starLabel').textContent = 'Select a rating';
+
     document.querySelectorAll('.star-btn').forEach(btn => {
         btn.classList.remove('active', 'hovered');
     });
@@ -317,6 +334,7 @@ function applyStars(value, type) {
     document.querySelectorAll('.star-btn').forEach(btn => {
         const v = parseInt(btn.dataset.value);
         btn.classList.remove('active', 'hovered');
+
         if (type === 'hover') {
             btn.classList.toggle('hovered', v <= value);
         } else {
@@ -328,7 +346,7 @@ function applyStars(value, type) {
         document.getElementById('starLabel').textContent = ratingLabels[value];
     } else {
         currentRating = value;
-        document.getElementById('ratingInput').value     = value;
+        document.getElementById('ratingInput').value = value;
         document.getElementById('starLabel').textContent = ratingLabels[value];
     }
 }
@@ -336,19 +354,22 @@ function applyStars(value, type) {
 document.querySelectorAll('.star-btn').forEach(btn => {
     const v = parseInt(btn.dataset.value);
 
-    btn.addEventListener('click',      () => applyStars(v, 'click'));
+    btn.addEventListener('click', () => applyStars(v, 'click'));
     btn.addEventListener('mouseenter', () => applyStars(v, 'hover'));
+
     btn.addEventListener('mouseleave', () => {
         document.querySelectorAll('.star-btn').forEach(b => {
             b.classList.remove('hovered');
             b.classList.toggle('active', parseInt(b.dataset.value) <= currentRating);
         });
+
         document.getElementById('starLabel').textContent =
             currentRating ? ratingLabels[currentRating] : 'Select a rating';
     });
 });
 </script>
 
+<!-- NOTIFICATION MODAL -->
 <!-- NOTIFICATION MODAL -->
 <div class="notif-overlay" id="notifModal">
     <div class="notif-modal-v2">
@@ -364,9 +385,12 @@ document.querySelectorAll('.star-btn').forEach(btn => {
                             (feedback_notifications|length)
                             +
                             (announcements|length)
+                            +
+                            (1 if reservation_setting and reservation_setting.message else 0)
                         }}
                     </span>
                 </h2>
+
                 <p id="notifHeaderText">You have unread notifications</p>
             </div>
 
@@ -382,31 +406,67 @@ document.querySelectorAll('.star-btn').forEach(btn => {
         </div>
 
         <div class="notif-tabs">
-    <button class="active" onclick="filterNotifications('all', this)">All</button>
-    <button onclick="filterNotifications('unread', this)">Unread</button>
-    <button onclick="filterNotifications('announcements', this)">Announcements</button>
-    <button onclick="filterNotifications('reservations', this)">Reservations</button>
-    <button onclick="filterNotifications('feedback', this)">Feedback</button>
-</div>
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+            <button onclick="filterNotifications('feedback', this)">Feedback</button>
+        </div>
 
         <div class="notif-list">
 
-            {% if notif_reservations %}
-                {% for r in notif_reservations %}
-                <div class="notif-item unread" data-type="reservations">
-                    <div class="notif-icon">🖥</div>
+            {% if reservation_setting and reservation_setting.message %}
+                <div class="notif-item unread"
+                     data-type="reservations"
+                     data-notif-key="reservation-system-{{ reservation_setting.updated_at }}-{{ reservation_setting.reservations_enabled }}">
+
+                    <div class="notif-icon {% if reservation_setting.reservations_enabled %}green{% else %}orange{% endif %}">
+                        {% if reservation_setting.reservations_enabled %}
+                            ✅
+                        {% else %}
+                            🚫
+                        {% endif %}
+                    </div>
 
                     <div class="notif-content">
-                        <h4>Reservation {{ r.status }}</h4>
-                        <p>
-                            Your reservation at {{ r.lab }},
-                            PC #{{ r.pc_number }} is {{ r.status }}.
-                        </p>
-                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        {% if reservation_setting.reservations_enabled %}
+                            <h4>Reservations Enabled</h4>
+                        {% else %}
+                            <h4>Reservations Disabled</h4>
+                        {% endif %}
+
+                        <p>{{ reservation_setting.message }}</p>
+
+                        {% if reservation_setting.updated_at %}
+                            <small>{{ reservation_setting.updated_at }}</small>
+                        {% endif %}
                     </div>
 
                     <span class="notif-dot"></span>
                 </div>
+            {% endif %}
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                    <div class="notif-item unread"
+                         data-type="reservations"
+                         data-notif-key="reservation-{{ r.id }}-{{ r.status }}">
+
+                        <div class="notif-icon">🖥</div>
+
+                        <div class="notif-content">
+                            <h4>Reservation {{ r.status }}</h4>
+
+                            <p>
+                                Your reservation at {{ r.lab }},
+                                PC #{{ r.pc_number }} is {{ r.status }}.
+                            </p>
+
+                            <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        </div>
+
+                        <span class="notif-dot"></span>
+                    </div>
                 {% endfor %}
             {% endif %}
 
@@ -414,7 +474,10 @@ document.querySelectorAll('.star-btn').forEach(btn => {
                 {% for item in feedback_notifications %}
                     {% set record = item.record %}
 
-                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}"
+                         data-type="feedback"
+                         data-notif-key="feedback-{{ record.id }}-{% if item.submitted %}submitted{% else %}required{% endif %}">
+
                         <div class="notif-icon green">
                             {% if item.submitted %}
                                 ⭐
@@ -426,12 +489,14 @@ document.querySelectorAll('.star-btn').forEach(btn => {
                         <div class="notif-content">
                             {% if item.submitted %}
                                 <h4>Feedback submitted</h4>
+
                                 <p>
                                     Your feedback for Lab {{ record.sit_lab }}
                                     has been submitted successfully.
                                 </p>
                             {% else %}
                                 <h4>Feedback required</h4>
+
                                 <p>
                                     Your sit-in session at Lab {{ record.sit_lab }}
                                     has ended. Please submit your feedback.
@@ -450,24 +515,27 @@ document.querySelectorAll('.star-btn').forEach(btn => {
 
             {% if announcements %}
                 {% for item in announcements %}
-                <div class="notif-item" data-type="announcements">
-                    <div class="notif-icon orange">📢</div>
+                    <div class="notif-item"
+                         data-type="announcements"
+                         data-notif-key="announcement-{{ item.id }}">
 
-                    <div class="notif-content">
-                        <h4>New announcement from CCS Admin</h4>
-                        <p>"{{ item.content }}"</p>
-                        <small>{{ item.created_at }}</small>
+                        <div class="notif-icon orange">📢</div>
+
+                        <div class="notif-content">
+                            <h4>New announcement from CCS Admin</h4>
+                            <p>"{{ item.content }}"</p>
+                            <small>{{ item.created_at }}</small>
+                        </div>
                     </div>
-                </div>
                 {% endfor %}
             {% endif %}
 
-            {% if not notif_reservations and not feedback_notifications and not announcements %}
-            <div class="notif-empty-state">
-                <div class="notif-empty-icon">🔔</div>
-                <h3>No notifications yet</h3>
-                <p>Updates about reservations and announcements will appear here.</p>
-            </div>
+            {% if not notif_reservations and not feedback_notifications and not announcements and not (reservation_setting and reservation_setting.message) %}
+                <div class="notif-empty-state">
+                    <div class="notif-empty-icon">🔔</div>
+                    <h3>No notifications yet</h3>
+                    <p>Updates about reservations and announcements will appear here.</p>
+                </div>
             {% endif %}
 
         </div>
@@ -475,8 +543,7 @@ document.querySelectorAll('.star-btn').forEach(btn => {
 </div>
 
 <script>
-const NOTIF_READ_KEY = 'ccs_student_notifications_read';
-const NOTIF_SIGNATURE_KEY = 'ccs_student_notifications_signature';
+const NOTIF_READ_ITEMS_KEY = 'ccs_student_read_notification_items';
 
 function openNotifModal() {
     const modal = document.getElementById('notifModal');
@@ -494,12 +561,91 @@ function closeNotifModal() {
     }
 }
 
-function getNotificationSignature() {
+/* IMPORTANT:
+   This follows your 1st logic.
+   It only uses data-notif-key so all pages match.
+*/
+function getNotificationText(item) {
+    return item.dataset.notifKey || '';
+}
+
+function getReadItems() {
+    try {
+        return JSON.parse(localStorage.getItem(NOTIF_READ_ITEMS_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveReadItems(items) {
+    localStorage.setItem(NOTIF_READ_ITEMS_KEY, JSON.stringify(items));
+}
+
+function updateUnreadUI() {
+    const readItems = getReadItems();
     const items = Array.from(document.querySelectorAll('.notif-item'));
 
-    return items.map(item => {
-        return item.innerText.trim().replace(/\s+/g, ' ');
-    }).join('|');
+    let unreadCount = 0;
+
+    items.forEach(item => {
+        const signature = getNotificationText(item);
+
+        if (!signature) {
+            return;
+        }
+
+        const isRead = readItems.includes(signature);
+
+        if (isRead) {
+            item.classList.remove('unread');
+
+            const dot = item.querySelector('.notif-dot');
+            if (dot) {
+                dot.remove();
+            }
+        } else {
+            item.classList.add('unread');
+
+            if (!item.querySelector('.notif-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'notif-dot';
+                item.appendChild(dot);
+            }
+
+            unreadCount++;
+        }
+    });
+
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+
+    if (notifCount) {
+        notifCount.innerText = unreadCount;
+    }
+
+    const notifText = document.getElementById('notifHeaderText');
+
+    if (notifText) {
+        notifText.innerText = unreadCount > 0
+            ? 'You have unread notifications'
+            : 'All caught up!';
+    }
+}
+
+function markAllNotificationsRead() {
+    const items = Array.from(document.querySelectorAll('.notif-item'));
+
+    const signatures = items
+        .map(item => getNotificationText(item))
+        .filter(signature => signature !== '');
+
+    saveReadItems(signatures);
+    updateUnreadUI();
 }
 
 function getNotificationType(item) {
@@ -554,74 +700,11 @@ function filterNotifications(type, button) {
     });
 }
 
-function applyNotificationsReadUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'none';
-    }
-
-    document.querySelectorAll('.notif-dot').forEach(dot => {
-        dot.remove();
-    });
-
-    document.querySelectorAll('.notif-item.unread').forEach(item => {
-        item.classList.remove('unread');
-    });
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'All caught up!';
-    }
-
-    const notifCount = document.querySelector('.notif-count');
-
-    if (notifCount) {
-        notifCount.innerText = '0';
-    }
-}
-
-function showUnreadBadgeUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'inline-flex';
-    }
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'You have unread notifications';
-    }
-}
-
-function markAllNotificationsRead() {
-    const currentSignature = getNotificationSignature();
-
-    localStorage.setItem(NOTIF_READ_KEY, 'yes');
-    localStorage.setItem(NOTIF_SIGNATURE_KEY, currentSignature);
-
-    applyNotificationsReadUI();
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    const currentSignature = getNotificationSignature();
-    const savedSignature = localStorage.getItem(NOTIF_SIGNATURE_KEY);
-    const isMarkedRead = localStorage.getItem(NOTIF_READ_KEY) === 'yes';
-
-    if (isMarkedRead && savedSignature === currentSignature) {
-        applyNotificationsReadUI();
-    } else {
-        localStorage.removeItem(NOTIF_READ_KEY);
-
-        if (currentSignature !== '') {
-            showUnreadBadgeUI();
-        }
-    }
+    updateUnreadUI();
 });
 
-window.addEventListener('click', function (e) {
+window.addEventListener('click', function(e) {
     const modal = document.getElementById('notifModal');
 
     if (e.target === modal) {
@@ -629,5 +712,6 @@ window.addEventListener('click', function (e) {
     }
 });
 </script>
+
 </body>
 </html>

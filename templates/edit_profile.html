@@ -12,22 +12,21 @@
     <nav class="navbar">
         <a href="{{ url_for('dashboard') }}" class="brand">College of Computer Studies Sit-in Monitoring System</a>
         <div class="nav-links">
-           <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
-            Notification
-            {% if notif_reservations|length + feedback_notifications|length > 0 %}
-                <span class="notif-alert-badge">!</span>
-            {% endif %}
-        </a>
+            <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
+                Notification
+                {% set reservation_system_notice = reservation_setting and reservation_setting.message %}
+                {% if notif_reservations|length + feedback_notifications|length > 0 or reservation_system_notice %}
+                    <span class="notif-alert-badge">!</span>
+                {% endif %}
+            </a>
             <a href="{{ url_for('dashboard') }}">Home</a>
             <a href="{{ url_for('edit_profile') }}" class="nav-active">Edit Profile</a>
             <a href="{{ url_for('history') }}">History</a>
             <a href="{{ url_for('reservation') }}">Reservation</a>
             <a href="{{ url_for('logout') }}">Logout</a>
-        
             <button class="dm-toggle" title="Toggle Dark Mode">🌙</button>
         </div>
     </nav>
-
 
     <div class="edit-wrapper">
         <div class="edit-card">
@@ -145,6 +144,8 @@
                             (feedback_notifications|length)
                             +
                             (announcements|length)
+                            +
+                            (1 if reservation_setting and reservation_setting.message else 0)
                         }}
                     </span>
                 </h2>
@@ -155,39 +156,61 @@
                 <button class="notif-read-btn" onclick="markAllNotificationsRead()">
                     ✓ Mark all read
                 </button>
-
-                <button class="notif-close-btn" onclick="closeNotifModal()">
-                    ×
-                </button>
+                <button class="notif-close-btn" onclick="closeNotifModal()">×</button>
             </div>
         </div>
 
         <div class="notif-tabs">
-    <button class="active" onclick="filterNotifications('all', this)">All</button>
-    <button onclick="filterNotifications('unread', this)">Unread</button>
-    <button onclick="filterNotifications('announcements', this)">Announcements</button>
-    <button onclick="filterNotifications('reservations', this)">Reservations</button>
-    <button onclick="filterNotifications('feedback', this)">Feedback</button>
-</div>
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+            <button onclick="filterNotifications('feedback', this)">Feedback</button>
+        </div>
 
         <div class="notif-list">
 
-            {% if notif_reservations %}
-                {% for r in notif_reservations %}
-                <div class="notif-item unread" data-type="reservations">
-                    <div class="notif-icon">🖥</div>
+            {% if reservation_setting and reservation_setting.message %}
+                <div class="notif-item unread"
+                     data-type="reservations"
+                     data-notif-key="reservation-system-{{ reservation_setting.updated_at }}-{{ reservation_setting.reservations_enabled }}">
+
+                    <div class="notif-icon {% if reservation_setting.reservations_enabled %}green{% else %}orange{% endif %}">
+                        {% if reservation_setting.reservations_enabled %}✅{% else %}🚫{% endif %}
+                    </div>
 
                     <div class="notif-content">
-                        <h4>Reservation {{ r.status }}</h4>
-                        <p>
-                            Your reservation at {{ r.lab }},
-                            PC #{{ r.pc_number }} is {{ r.status }}.
-                        </p>
-                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        {% if reservation_setting.reservations_enabled %}
+                            <h4>Reservations Enabled</h4>
+                        {% else %}
+                            <h4>Reservations Disabled</h4>
+                        {% endif %}
+                        <p>{{ reservation_setting.message }}</p>
+                        {% if reservation_setting.updated_at %}
+                            <small>{{ reservation_setting.updated_at }}</small>
+                        {% endif %}
                     </div>
 
                     <span class="notif-dot"></span>
                 </div>
+            {% endif %}
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                    <div class="notif-item unread"
+                         data-type="reservations"
+                         data-notif-key="reservation-{{ r.id }}-{{ r.status }}">
+
+                        <div class="notif-icon">🖥</div>
+
+                        <div class="notif-content">
+                            <h4>Reservation {{ r.status }}</h4>
+                            <p>Your reservation at {{ r.lab }}, PC #{{ r.pc_number }} is {{ r.status }}.</p>
+                            <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        </div>
+
+                        <span class="notif-dot"></span>
+                    </div>
                 {% endfor %}
             {% endif %}
 
@@ -195,30 +218,22 @@
                 {% for item in feedback_notifications %}
                     {% set record = item.record %}
 
-                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}"
+                         data-type="feedback"
+                         data-notif-key="feedback-{{ record.id }}-{% if item.submitted %}submitted{% else %}required{% endif %}">
+
                         <div class="notif-icon green">
-                            {% if item.submitted %}
-                                ⭐
-                            {% else %}
-                                ✅
-                            {% endif %}
+                            {% if item.submitted %}⭐{% else %}✅{% endif %}
                         </div>
 
                         <div class="notif-content">
                             {% if item.submitted %}
                                 <h4>Feedback submitted</h4>
-                                <p>
-                                    Your feedback for Lab {{ record.sit_lab }}
-                                    has been submitted successfully.
-                                </p>
+                                <p>Your feedback for Lab {{ record.sit_lab }} has been submitted successfully.</p>
                             {% else %}
                                 <h4>Feedback required</h4>
-                                <p>
-                                    Your sit-in session at Lab {{ record.sit_lab }}
-                                    has ended. Please submit your feedback.
-                                </p>
+                                <p>Your sit-in session at Lab {{ record.sit_lab }} has ended. Please submit your feedback.</p>
                             {% endif %}
-
                             <small>{{ record.logout_time }}</small>
                         </div>
 
@@ -231,24 +246,27 @@
 
             {% if announcements %}
                 {% for item in announcements %}
-                <div class="notif-item" data-type="announcements">
-                    <div class="notif-icon orange">📢</div>
+                    <div class="notif-item"
+                         data-type="announcements"
+                         data-notif-key="announcement-{{ item.id }}">
 
-                    <div class="notif-content">
-                        <h4>New announcement from CCS Admin</h4>
-                        <p>"{{ item.content }}"</p>
-                        <small>{{ item.created_at }}</small>
+                        <div class="notif-icon orange">📢</div>
+
+                        <div class="notif-content">
+                            <h4>New announcement from CCS Admin</h4>
+                            <p>"{{ item.content }}"</p>
+                            <small>{{ item.created_at }}</small>
+                        </div>
                     </div>
-                </div>
                 {% endfor %}
             {% endif %}
 
-            {% if not notif_reservations and not feedback_notifications and not announcements %}
-            <div class="notif-empty-state">
-                <div class="notif-empty-icon">🔔</div>
-                <h3>No notifications yet</h3>
-                <p>Updates about reservations and announcements will appear here.</p>
-            </div>
+            {% if not notif_reservations and not feedback_notifications and not announcements and not (reservation_setting and reservation_setting.message) %}
+                <div class="notif-empty-state">
+                    <div class="notif-empty-icon">🔔</div>
+                    <h3>No notifications yet</h3>
+                    <p>Updates about reservations and announcements will appear here.</p>
+                </div>
             {% endif %}
 
         </div>
@@ -256,75 +274,101 @@
 </div>
 
 <script>
-const NOTIF_READ_KEY = 'ccs_student_notifications_read';
-const NOTIF_SIGNATURE_KEY = 'ccs_student_notifications_signature';
+const NOTIF_READ_ITEMS_KEY = 'ccs_student_read_notification_items';
 
 function openNotifModal() {
     const modal = document.getElementById('notifModal');
-
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
 }
 
 function closeNotifModal() {
     const modal = document.getElementById('notifModal');
+    if (modal) modal.classList.remove('show');
+}
 
-    if (modal) {
-        modal.classList.remove('show');
+// ALWAYS use data-notif-key — never fall back to innerText
+function getNotificationText(item) {
+    return item.dataset.notifKey || '';
+}
+
+function getReadItems() {
+    try {
+        return JSON.parse(localStorage.getItem(NOTIF_READ_ITEMS_KEY)) || [];
+    } catch (e) {
+        return [];
     }
 }
 
-function getNotificationSignature() {
-    const items = Array.from(document.querySelectorAll('.notif-item'));
+function saveReadItems(items) {
+    localStorage.setItem(NOTIF_READ_ITEMS_KEY, JSON.stringify(items));
+}
 
-    return items.map(item => {
-        return item.innerText.trim().replace(/\s+/g, ' ');
-    }).join('|');
+function updateUnreadUI() {
+    const readItems = getReadItems();
+    const items = Array.from(document.querySelectorAll('.notif-item'));
+    let unreadCount = 0;
+
+    items.forEach(item => {
+        const signature = getNotificationText(item);
+        if (!signature) return;
+
+        const isRead = readItems.includes(signature);
+
+        if (isRead) {
+            item.classList.remove('unread');
+            const dot = item.querySelector('.notif-dot');
+            if (dot) dot.remove();
+        } else {
+            item.classList.add('unread');
+            if (!item.querySelector('.notif-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'notif-dot';
+                item.appendChild(dot);
+            }
+            unreadCount++;
+        }
+    });
+
+    const navBadge = document.querySelector('.notif-alert-badge');
+    if (navBadge) navBadge.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+
+    const notifCount = document.querySelector('.notif-count');
+    if (notifCount) notifCount.innerText = unreadCount;
+
+    const notifText = document.getElementById('notifHeaderText');
+    if (notifText) notifText.innerText = unreadCount > 0 ? 'You have unread notifications' : 'All caught up!';
+}
+
+function markAllNotificationsRead() {
+    const items = Array.from(document.querySelectorAll('.notif-item'));
+    const signatures = items
+        .map(item => getNotificationText(item))
+        .filter(sig => sig !== '');
+
+    saveReadItems(signatures);
+    updateUnreadUI();
 }
 
 function getNotificationType(item) {
     const dataType = item.dataset.type;
-
-    if (dataType) {
-        return dataType.toLowerCase();
-    }
+    if (dataType) return dataType.toLowerCase();
 
     const title = item.querySelector('h4');
-
-    if (!title) {
-        return '';
-    }
-
+    if (!title) return '';
     const titleText = title.innerText.toLowerCase();
 
-    if (titleText.includes('announcement')) {
-        return 'announcements';
-    }
-
-    if (titleText.includes('reservation')) {
-        return 'reservations';
-    }
-
-    if (titleText.includes('feedback')) {
-        return 'feedback';
-    }
-
+    if (titleText.includes('announcement')) return 'announcements';
+    if (titleText.includes('reservation')) return 'reservations';
+    if (titleText.includes('feedback')) return 'feedback';
     return '';
 }
 
 function filterNotifications(type, button) {
-    document.querySelectorAll('.notif-tabs button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    if (button) {
-        button.classList.add('active');
-    }
+    document.querySelectorAll('.notif-tabs button').forEach(btn => btn.classList.remove('active'));
+    if (button) button.classList.add('active');
 
     document.querySelectorAll('.notif-item').forEach(item => {
         const itemType = getNotificationType(item);
-
         if (type === 'all') {
             item.style.display = 'flex';
         } else if (type === 'unread') {
@@ -335,76 +379,13 @@ function filterNotifications(type, button) {
     });
 }
 
-function applyNotificationsReadUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'none';
-    }
-
-    document.querySelectorAll('.notif-dot').forEach(dot => {
-        dot.remove();
-    });
-
-    document.querySelectorAll('.notif-item.unread').forEach(item => {
-        item.classList.remove('unread');
-    });
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'All caught up!';
-    }
-
-    const notifCount = document.querySelector('.notif-count');
-
-    if (notifCount) {
-        notifCount.innerText = '0';
-    }
-}
-
-function showUnreadBadgeUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'inline-flex';
-    }
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'You have unread notifications';
-    }
-}
-
-function markAllNotificationsRead() {
-    const currentSignature = getNotificationSignature();
-
-    localStorage.setItem(NOTIF_READ_KEY, 'yes');
-    localStorage.setItem(NOTIF_SIGNATURE_KEY, currentSignature);
-
-    applyNotificationsReadUI();
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    const currentSignature = getNotificationSignature();
-    const savedSignature = localStorage.getItem(NOTIF_SIGNATURE_KEY);
-    const isMarkedRead = localStorage.getItem(NOTIF_READ_KEY) === 'yes';
-
-    if (isMarkedRead && savedSignature === currentSignature) {
-        applyNotificationsReadUI();
-    } else {
-        localStorage.removeItem(NOTIF_READ_KEY);
-        showUnreadBadgeUI();
-    }
+    updateUnreadUI();
 });
 
 window.addEventListener('click', function(e) {
     const modal = document.getElementById('notifModal');
-
-    if (e.target === modal) {
-        closeNotifModal();
-    }
+    if (e.target === modal) closeNotifModal();
 });
 </script>
 </body>

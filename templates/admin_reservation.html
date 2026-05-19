@@ -52,21 +52,40 @@
 <div class="admin-wrapper">
     <div class="armgmt-panel">
 
-        <div class="armgmt-header">
-            <div class="armgmt-header-left">
-                <span class="armgmt-header-icon">🖥️</span>
-                <div>
-                    <div class="armgmt-header-title">Reservation Management</div>
-                    <div class="armgmt-header-sub">Manage lab bookings, availability and PC maintenance</div>
-                </div>
+       <div class="armgmt-header">
+    <div class="armgmt-header-left">
+        <span class="armgmt-header-icon">🖥️</span>
+
+        <div>
+            <div class="armgmt-header-title">Reservation Management</div>
+            <div class="armgmt-header-sub">
+                Manage lab bookings, availability and PC maintenance
             </div>
         </div>
+    </div>
 
+    <form method="POST" action="{{ url_for('toggle_reservations') }}" class="armgmt-toggle-form">
+        {% if reservation_setting and reservation_setting.reservations_enabled %}
+            <button type="submit"
+                    class="armgmt-reservation-toggle enabled"
+                    onclick="return confirm('Disable student reservations?')">
+                ✅ Reservations Enabled
+            </button>
+        {% else %}
+            <button type="submit"
+                    class="armgmt-reservation-toggle disabled"
+                    onclick="return confirm('Enable student reservations?')">
+                🚫 Reservations Disabled
+            </button>
+        {% endif %}
+    </form>
+</div>
         <div class="armgmt-tabs">
-            <button class="armgmt-tab active" onclick="switchTab('all', this)">🖥️ All Reservations</button>
-            <button class="armgmt-tab" onclick="switchTab('availability', this)">📅 Lab Availability</button>
-            <button class="armgmt-tab" onclick="switchTab('pcstatus', this)">💻 PC Status</button>
-        </div>
+    <button class="armgmt-tab active" onclick="switchTab('all', this)">🖥️ All Reservations</button>
+    <button class="armgmt-tab" onclick="switchTab('availability', this)">📅 Lab Availability</button>
+    <button class="armgmt-tab" onclick="switchTab('pcstatus', this)">💻 PC Status</button>
+    <button class="armgmt-tab" onclick="switchTab('software', this)">💻 Software</button>
+</div>
 
         {% set total_reservations = reservations|length %}
 {% set pending_reservations = reservations|selectattr('status', 'equalto', 'Pending')|list|length %}
@@ -307,6 +326,335 @@
     </div>
 </div>
 
+        <!-- SOFTWARE -->
+        <div class="armgmt-tab-body" id="tabSoftware">
+            <div class="armgmt-pc-status-wrap">
+
+                <div class="armgmt-pc-status-header">
+                    <h3>Lab Software Availability</h3>
+                    <p>Add and manage installed software for each laboratory</p>
+                </div>
+<div class="armgmt-software-topbar">
+
+    <div class="armgmt-software-filter">
+        <label for="softwareLabFilter">FILTER BY LAB</label>
+
+        <div class="armgmt-software-select-wrap">
+            <select id="softwareLabFilter" onchange="filterSoftwareByLab()">
+                <option value="">All Labs</option>
+                <option value="Lab 524">Lab 524</option>
+                <option value="Lab 526">Lab 526</option>
+                <option value="Lab 528">Lab 528</option>
+                <option value="Lab 530">Lab 530</option>
+                <option value="Lab 542">Lab 542</option>
+                <option value="Lab 544">Lab 544</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="armgmt-software-actions">
+        <button type="button" class="armgmt-add-software-btn" onclick="openSoftwareModal()">
+            + Add Software
+        </button>
+
+        <button type="button" class="armgmt-import-software-btn" onclick="openSoftwareImportModal()">
+            📁 Upload Software File
+        </button>
+    </div>
+
+</div>
+
+                <div class="armgmt-table-wrap">
+                    <table class="armgmt-table" id="softwareTable">
+                        <thead>
+                            <tr>
+                                <th>Lab</th>
+                                <th>Software Name</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% if software_list %}
+                                {% for software in software_list %}
+                                    <tr data-lab="{{ software.lab }}">
+                                        <td>
+                                            <span class="armgmt-lab-badge">{{ software.lab }}</span>
+                                        </td>
+
+                                        <td>
+                                            <strong>{{ software.software_name }}</strong>
+                                        </td>
+
+                                        <td>
+                                            <span class="armgmt-version-pill">{{ software.version }}</span>
+                                        </td>
+
+                                        <td>
+                                            {% if software.status == 'Available' %}
+                                                <span class="armgmt-status armgmt-status-approved">✓ Available</span>
+                                            {% elif software.status == 'Needs Update' %}
+                                                <span class="armgmt-status armgmt-status-pending">⚠ Needs Update</span>
+                                            {% else %}
+                                                <span class="armgmt-status armgmt-status-cancelled">✕ {{ software.status }}</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                           <div class="armgmt-actions">
+
+    <button
+        type="button"
+        class="armgmt-approve-btn"
+        onclick="openEditSoftwareModal(
+            '{{ software.id }}',
+            '{{ software.lab }}',
+            '{{ software.software_name }}',
+            '{{ software.version }}',
+            '{{ software.status }}'
+        )">
+        — Edit
+    </button>
+
+    <form
+        method="POST"
+        action="{{ url_for('delete_software', software_id=software.id) }}"
+        style="display:inline;"
+        onsubmit="return confirm('Delete this software?')">
+
+        <button type="submit" class="armgmt-decline-btn">
+            🗑 Delete
+        </button>
+    </form>
+
+</div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="armgmt-empty">No software added yet.</div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+<!-- ADD SOFTWARE MODAL -->
+<div class="software-modal-overlay" id="softwareModal">
+    <div class="software-modal">
+
+        <div class="software-modal-header">
+            <div>
+                <h3>💻 Add Software</h3>
+                <p>Add installed software for a selected laboratory.</p>
+            </div>
+
+            <button type="button" class="software-modal-close" onclick="closeSoftwareModal()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('add_software') }}" class="software-modal-form">
+
+            <div class="software-field">
+                <label>Laboratory</label>
+                <select name="lab" required>
+                    <option value="">Select Lab</option>
+                    <option value="Lab 524">Lab 524</option>
+                    <option value="Lab 526">Lab 526</option>
+                    <option value="Lab 528">Lab 528</option>
+                    <option value="Lab 530">Lab 530</option>
+                    <option value="Lab 542">Lab 542</option>
+                    <option value="Lab 544">Lab 544</option>
+                </select>
+            </div>
+
+            <div class="software-field">
+                <label>Software Name</label>
+                <input type="text" name="software_name" placeholder="Example: Visual Studio Code" required>
+            </div>
+
+            <div class="software-field">
+                <label>Version</label>
+                <input type="text" name="version" placeholder="Example: v1.92" required>
+            </div>
+
+            <div class="software-field">
+                <label>Status</label>
+                <select name="status" required>
+                    <option value="Available">Available</option>
+                    <option value="Needs Update">Needs Update</option>
+                    <option value="Unavailable">Unavailable</option>
+                </select>
+            </div>
+
+            <div class="software-modal-actions">
+                <button type="button" class="software-btn-cancel" onclick="closeSoftwareModal()">Cancel</button>
+                <button type="submit" class="software-btn-save">Save Software</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- EDIT SOFTWARE MODAL -->
+<div class="software-modal-overlay" id="editSoftwareModal">
+    <div class="software-modal">
+
+        <div class="software-modal-header">
+            <div>
+                <h3>✏️ Edit Software</h3>
+                <p>Update installed software information.</p>
+            </div>
+
+            <button type="button" class="software-modal-close" onclick="closeEditSoftwareModal()">×</button>
+        </div>
+
+        <form method="POST" id="editSoftwareForm" class="software-modal-form">
+
+            <div class="software-field">
+                <label>Laboratory</label>
+                <select name="lab" id="editSoftwareLab" required>
+                    <option value="">Select Lab</option>
+                    <option value="Lab 524">Lab 524</option>
+                    <option value="Lab 526">Lab 526</option>
+                    <option value="Lab 528">Lab 528</option>
+                    <option value="Lab 530">Lab 530</option>
+                    <option value="Lab 542">Lab 542</option>
+                    <option value="Lab 544">Lab 544</option>
+                </select>
+            </div>
+
+            <div class="software-field">
+                <label>Software Name</label>
+                <input
+                    type="text"
+                    name="software_name"
+                    id="editSoftwareName"
+                    placeholder="Example: Visual Studio Code"
+                    required
+                >
+            </div>
+
+            <div class="software-field">
+                <label>Version</label>
+                <input
+                    type="text"
+                    name="version"
+                    id="editSoftwareVersion"
+                    placeholder="Example: v1.92"
+                    required
+                >
+            </div>
+
+            <div class="software-field">
+                <label>Status</label>
+                <select name="status" id="editSoftwareStatus" required>
+                    <option value="Available">Available</option>
+                    <option value="Needs Update">Needs Update</option>
+                    <option value="Unavailable">Unavailable</option>
+                </select>
+            </div>
+
+            <div class="software-modal-actions">
+                <button type="button" class="software-btn-cancel" onclick="closeEditSoftwareModal()">
+                    Cancel
+                </button>
+
+                <button type="submit" class="software-btn-save">
+                    Save Changes
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- IMPORT SOFTWARE MODAL -->
+<div class="software-import-overlay" id="softwareImportModal">
+    <div class="software-import-modal">
+
+        <div class="software-import-header">
+            <div>
+                <h3>📁 Upload Software File</h3>
+                <p>Import software list from CSV or Excel file</p>
+            </div>
+
+            <button type="button" class="software-import-close" onclick="closeSoftwareImportModal()">×</button>
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('import_software') }}"
+              enctype="multipart/form-data"
+              class="software-import-form">
+
+            <div class="software-import-types">
+                <div class="software-import-type csv">
+                    <div class="software-import-icon">📄</div>
+                    <strong>CSV</strong>
+                    <span>.csv</span>
+                </div>
+
+                <div class="software-import-type excel">
+                    <div class="software-import-icon">📊</div>
+                    <strong>Excel</strong>
+                    <span>.xlsx</span>
+                </div>
+
+                <div class="software-import-type pdf disabled">
+                    <div class="software-import-icon">📑</div>
+                    <strong>PDF</strong>
+                    <span>Not supported yet</span>
+                </div>
+            </div>
+
+            <div class="software-import-help">
+                <strong>📋 Required columns in your file:</strong>
+
+                <div class="software-import-columns">
+                    <span>lab</span>
+                    <span>software_name</span>
+                    <span>version</span>
+                    <span>status</span>
+                </div>
+
+                <p>Status values: <b>Available</b>, <b>Needs Update</b>, or <b>Unavailable</b></p>
+            </div>
+
+            <label class="software-dropzone" for="softwareImportFile">
+                <input
+                    type="file"
+                    name="software_file"
+                    id="softwareImportFile"
+                    accept=".csv,.xlsx"
+                    required
+                    onchange="previewSoftwareFileName(this)"
+                >
+
+                <div class="software-drop-icon">📁</div>
+                <h4 id="softwareImportFileName">Click to choose file or drag & drop here</h4>
+                <p>Supported: .csv and .xlsx</p>
+            </label>
+
+            <div class="software-import-actions">
+                <button type="button" class="software-import-cancel" onclick="closeSoftwareImportModal()">
+                    Cancel
+                </button>
+
+                <button type="submit" class="software-import-submit">
+                    ⬆ Upload & Import
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
 <script>
 const LABS = ['Lab 524', 'Lab 526', 'Lab 528', 'Lab 530', 'Lab 542', 'Lab 544'];
 const DEFAULT_SLOTS = [
@@ -326,10 +674,11 @@ function switchTab(tab, btn) {
     btn.classList.add('active');
 
     const map = {
-        all: 'tabAll',
-        availability: 'tabAvailability',
-        pcstatus: 'tabPcStatus'
-    };
+    all: 'tabAll',
+    availability: 'tabAvailability',
+    pcstatus: 'tabPcStatus',
+    software: 'tabSoftware'
+};
 
     document.getElementById(map[tab]).classList.add('active');
 
@@ -526,7 +875,7 @@ async function toggleMaintenance(lab, pcNumber) {
 async function toggleLabMaintenance(lab) {
     const status = prompt(
         `Set status for ${lab}:\n\nType one:\nAvailable\nFull\nMaintenance\nReserved for Class\nClosed`,
-        'Maintenance'
+        'Available'
     );
 
     if (status === null) {
@@ -604,6 +953,106 @@ setInterval(() => {
         loadAvailability();
     }
 }, 10000);
+
+/* SOFTWARE MODAL */
+function openSoftwareModal() {
+    const modal = document.getElementById('softwareModal');
+
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeSoftwareModal() {
+    const modal = document.getElementById('softwareModal');
+
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function filterSoftwareByLab() {
+    const selectedLab = document.getElementById('softwareLabFilter').value;
+    const rows = document.querySelectorAll('#softwareTable tbody tr[data-lab]');
+
+    rows.forEach(row => {
+        const rowLab = row.dataset.lab;
+
+        if (selectedLab === 'all' || rowLab === selectedLab) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('softwareModal');
+
+    if (e.target === modal) {
+        closeSoftwareModal();
+    }
+});
+
+function openSoftwareImportModal() {
+    const modal = document.getElementById('softwareImportModal');
+
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeSoftwareImportModal() {
+    const modal = document.getElementById('softwareImportModal');
+
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function previewSoftwareFileName(input) {
+    const label = document.getElementById('softwareImportFileName');
+
+    if (!label) return;
+
+    if (input.files && input.files.length > 0) {
+        label.textContent = input.files[0].name;
+    } else {
+        label.textContent = 'Click to choose file or drag & drop here';
+    }
+}
+
+window.addEventListener('click', function(e) {
+    const importModal = document.getElementById('softwareImportModal');
+
+    if (e.target === importModal) {
+        closeSoftwareImportModal();
+    }
+});
+
+function openEditSoftwareModal(id, lab, softwareName, version, status) {
+    const modal = document.getElementById('editSoftwareModal');
+    const form = document.getElementById('editSoftwareForm');
+
+    document.getElementById('editSoftwareLab').value = lab;
+    document.getElementById('editSoftwareName').value = softwareName;
+    document.getElementById('editSoftwareVersion').value = version;
+    document.getElementById('editSoftwareStatus').value = status;
+
+    form.action = `/admin/software/edit/${id}`;
+
+    if (modal) {
+        modal.classList.add('show');
+    }
+}
+
+function closeEditSoftwareModal() {
+    const modal = document.getElementById('editSoftwareModal');
+
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
 </script>
 
 </body>

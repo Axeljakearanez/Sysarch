@@ -17,9 +17,11 @@
     <div class="nav-links">
         <a href="#" class="notif-nav-link" onclick="openNotifModal(); return false;">
             Notification
-            {% if notif_reservations|length + feedback_notifications|length > 0 %}
-                <span class="notif-alert-badge">!</span>
-            {% endif %}
+           {% set reservation_system_notice = reservation_setting and reservation_setting.message %}
+
+{% if notif_reservations|length + feedback_notifications|length > 0 or reservation_system_notice %}
+    <span class="notif-alert-badge">!</span>
+{% endif %}
         </a>
         <a href="{{ url_for('dashboard') }}">Home</a>
         <a href="{{ url_for('edit_profile') }}">Edit Profile</a>
@@ -57,6 +59,16 @@
         <h1 class="rsv-page-title">Lab Reservation</h1>
         <p class="rsv-page-subtitle">Book your PC slot in advance</p>
     </div>
+
+    {% if reservation_setting and not reservation_setting.reservations_enabled %}
+        <div class="rsv-disabled-banner">
+            <div class="rsv-disabled-icon">🚫</div>
+            <div>
+                <strong>Reservations are currently disabled.</strong>
+                <p>The admin has temporarily closed reservations. Please check again later.</p>
+            </div>
+        </div>
+    {% endif %}
 
     <div class="rsv-layout">
 
@@ -149,6 +161,21 @@
 
                     <div id="labsGrid" class="rsv-labs-grid" style="display:none"></div>
 
+                    <div class="rsv-software-box" id="selectedLabSoftwareBox" style="display:none;">
+                        <div class="rsv-software-head">
+                            <div>
+                                <h3>💻 Lab Software Availability</h3>
+                                <p id="selectedLabSoftwareSub">Select a lab to view available software.</p>
+                            </div>
+                        </div>
+
+                        <div class="rsv-software-list" id="selectedLabSoftwareList">
+                            <div class="rsv-software-empty">
+                                No lab selected yet.
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="rsv-step-footer">
                         <button class="rsv-btn-back" type="button" onclick="goStep(1)">← Back</button>
                         <button class="rsv-btn-next" type="button" onclick="goStep(3)" id="nextStep2" disabled>Next →</button>
@@ -208,7 +235,17 @@
                     <div class="rsv-warning">⚠️ Please double-check your reservation details. Once confirmed, you can cancel from the reservations list.</div>
                     <div class="rsv-step-footer">
                         <button class="rsv-btn-back" type="button" onclick="goStep(4)">← Back</button>
-                        <button class="rsv-btn-confirm" type="button" onclick="submitReservation()">✓ Confirm Reservation</button>
+                        <button class="rsv-btn-confirm"
+        type="button"
+        onclick="submitReservation()"
+        {% if reservation_setting and not reservation_setting.reservations_enabled %}disabled{% endif %}>
+
+    {% if reservation_setting and reservation_setting.reservations_enabled %}
+        ✓ Confirm Reservation
+    {% else %}
+        🚫 Reservations Disabled
+    {% endif %}
+</button>
                     </div>
                 </div>
 
@@ -381,6 +418,26 @@ pickDate.addEventListener('change', () => {
     document.getElementById('pcGrid').innerHTML = '';
     document.getElementById('labsGrid').style.display = 'none';
 
+    const softwareBox = document.getElementById('selectedLabSoftwareBox');
+    const softwareList = document.getElementById('selectedLabSoftwareList');
+    const softwareSub = document.getElementById('selectedLabSoftwareSub');
+
+    if (softwareBox) {
+        softwareBox.style.display = 'none';
+    }
+
+    if (softwareSub) {
+        softwareSub.textContent = 'Select a lab to view available software.';
+    }
+
+    if (softwareList) {
+        softwareList.innerHTML = `
+            <div class="rsv-software-empty">
+                No lab selected yet.
+            </div>
+        `;
+    }
+
     if (state.date) {
         const d = new Date(state.date + 'T00:00:00');
         document.getElementById('dateDisplay').textContent =
@@ -515,6 +572,84 @@ function selectLab(labId) {
     document.getElementById('nextStep2').disabled = false;
     document.getElementById('nextStep3').disabled = true;
     document.getElementById('nextStep4').disabled = true;
+
+    loadLabSoftware(labId);
+}
+
+async function loadLabSoftware(labId) {
+    const box = document.getElementById('selectedLabSoftwareBox');
+    const sub = document.getElementById('selectedLabSoftwareSub');
+    const list = document.getElementById('selectedLabSoftwareList');
+
+    if (!box || !sub || !list) {
+        return;
+    }
+
+    box.style.display = 'block';
+    sub.textContent = `Software installed in ${labId}`;
+    list.innerHTML = `
+        <div class="rsv-software-empty">
+            Loading software availability...
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/reservation/software?lab=${encodeURIComponent(labId)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            list.innerHTML = `
+                <div class="rsv-software-empty">
+                    ${data.error || 'Failed to load software.'}
+                </div>
+            `;
+            return;
+        }
+
+        if (!data.software || data.software.length === 0) {
+            list.innerHTML = `
+                <div class="rsv-software-empty">
+                    No software listed yet for ${labId}.
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = '';
+
+        data.software.forEach(item => {
+            const row = document.createElement('div');
+
+            let statusClass = 'available';
+            let statusIcon = '✅';
+
+            if (item.status !== 'Available') {
+                statusClass = 'warning';
+                statusIcon = '⚠️';
+            }
+
+            row.className = 'rsv-software-item';
+
+            row.innerHTML = `
+                <div class="rsv-software-info">
+                    <div class="rsv-software-name">${item.software_name}</div>
+                    <div class="rsv-software-version">${item.version}</div>
+                </div>
+
+                <div class="rsv-software-status ${statusClass}">
+                    ${statusIcon} ${item.status}
+                </div>
+            `;
+
+            list.appendChild(row);
+        });
+    } catch (error) {
+        list.innerHTML = `
+            <div class="rsv-software-empty">
+                Failed to connect to the server.
+            </div>
+        `;
+    }
 }
 
 async function renderTimeSlots() {
@@ -685,6 +820,13 @@ function renderConfirm() {
 }
 
 async function submitReservation() {
+    const reservationsEnabled = {{ 'true' if reservation_setting and reservation_setting.reservations_enabled else 'false' }};
+
+    if (!reservationsEnabled) {
+        alert('Reservations are currently disabled by the admin. Please check again later.');
+        return;
+    }
+
     if (!state.date || !state.lab || !state.slot || !state.pc) {
         alert('Please complete your reservation first.');
         return;
@@ -751,9 +893,12 @@ document.getElementById('pickDate').addEventListener('change', function () {
                             (feedback_notifications|length)
                             +
                             (announcements|length)
+                            +
+                            (1 if reservation_setting and reservation_setting.message else 0)
                         }}
                     </span>
                 </h2>
+
                 <p id="notifHeaderText">You have unread notifications</p>
             </div>
 
@@ -769,31 +914,67 @@ document.getElementById('pickDate').addEventListener('change', function () {
         </div>
 
         <div class="notif-tabs">
-    <button class="active" onclick="filterNotifications('all', this)">All</button>
-    <button onclick="filterNotifications('unread', this)">Unread</button>
-    <button onclick="filterNotifications('announcements', this)">Announcements</button>
-    <button onclick="filterNotifications('reservations', this)">Reservations</button>
-    <button onclick="filterNotifications('feedback', this)">Feedback</button>
-</div>
+            <button class="active" onclick="filterNotifications('all', this)">All</button>
+            <button onclick="filterNotifications('unread', this)">Unread</button>
+            <button onclick="filterNotifications('announcements', this)">Announcements</button>
+            <button onclick="filterNotifications('reservations', this)">Reservations</button>
+            <button onclick="filterNotifications('feedback', this)">Feedback</button>
+        </div>
 
         <div class="notif-list">
 
-            {% if notif_reservations %}
-                {% for r in notif_reservations %}
-                <div class="notif-item unread" data-type="reservations">
-                    <div class="notif-icon">🖥</div>
+            {% if reservation_setting and reservation_setting.message %}
+                <div class="notif-item unread"
+                     data-type="reservations"
+                     data-notif-key="reservation-system-{{ reservation_setting.updated_at }}-{{ reservation_setting.reservations_enabled }}">
+
+                    <div class="notif-icon {% if reservation_setting.reservations_enabled %}green{% else %}orange{% endif %}">
+                        {% if reservation_setting.reservations_enabled %}
+                            ✅
+                        {% else %}
+                            🚫
+                        {% endif %}
+                    </div>
 
                     <div class="notif-content">
-                        <h4>Reservation {{ r.status }}</h4>
-                        <p>
-                            Your reservation at {{ r.lab }},
-                            PC #{{ r.pc_number }} is {{ r.status }}.
-                        </p>
-                        <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        {% if reservation_setting.reservations_enabled %}
+                            <h4>Reservations Enabled</h4>
+                        {% else %}
+                            <h4>Reservations Disabled</h4>
+                        {% endif %}
+
+                        <p>{{ reservation_setting.message }}</p>
+
+                        {% if reservation_setting.updated_at %}
+                            <small>{{ reservation_setting.updated_at }}</small>
+                        {% endif %}
                     </div>
 
                     <span class="notif-dot"></span>
                 </div>
+            {% endif %}
+
+            {% if notif_reservations %}
+                {% for r in notif_reservations %}
+                    <div class="notif-item unread"
+                         data-type="reservations"
+                         data-notif-key="reservation-{{ r.id }}-{{ r.status }}">
+
+                        <div class="notif-icon">🖥</div>
+
+                        <div class="notif-content">
+                            <h4>Reservation {{ r.status }}</h4>
+
+                            <p>
+                                Your reservation at {{ r.lab }},
+                                PC #{{ r.pc_number }} is {{ r.status }}.
+                            </p>
+
+                            <small>{{ r.date }} • {{ r.time_slot }}</small>
+                        </div>
+
+                        <span class="notif-dot"></span>
+                    </div>
                 {% endfor %}
             {% endif %}
 
@@ -801,7 +982,10 @@ document.getElementById('pickDate').addEventListener('change', function () {
                 {% for item in feedback_notifications %}
                     {% set record = item.record %}
 
-                    <div class="notif-item {% if not item.submitted %}unread{% endif %}" data-type="feedback">
+                    <div class="notif-item {% if not item.submitted %}unread{% endif %}"
+                         data-type="feedback"
+                         data-notif-key="feedback-{{ record.id }}-{% if item.submitted %}submitted{% else %}required{% endif %}">
+
                         <div class="notif-icon green">
                             {% if item.submitted %}
                                 ⭐
@@ -813,12 +997,14 @@ document.getElementById('pickDate').addEventListener('change', function () {
                         <div class="notif-content">
                             {% if item.submitted %}
                                 <h4>Feedback submitted</h4>
+
                                 <p>
                                     Your feedback for Lab {{ record.sit_lab }}
                                     has been submitted successfully.
                                 </p>
                             {% else %}
                                 <h4>Feedback required</h4>
+
                                 <p>
                                     Your sit-in session at Lab {{ record.sit_lab }}
                                     has ended. Please submit your feedback.
@@ -837,24 +1023,27 @@ document.getElementById('pickDate').addEventListener('change', function () {
 
             {% if announcements %}
                 {% for item in announcements %}
-                <div class="notif-item" data-type="announcements">
-                    <div class="notif-icon orange">📢</div>
+                    <div class="notif-item"
+                         data-type="announcements"
+                         data-notif-key="announcement-{{ item.id }}">
 
-                    <div class="notif-content">
-                        <h4>New announcement from CCS Admin</h4>
-                        <p>"{{ item.content }}"</p>
-                        <small>{{ item.created_at }}</small>
+                        <div class="notif-icon orange">📢</div>
+
+                        <div class="notif-content">
+                            <h4>New announcement from CCS Admin</h4>
+                            <p>"{{ item.content }}"</p>
+                            <small>{{ item.created_at }}</small>
+                        </div>
                     </div>
-                </div>
                 {% endfor %}
             {% endif %}
 
-            {% if not notif_reservations and not feedback_notifications and not announcements %}
-            <div class="notif-empty-state">
-                <div class="notif-empty-icon">🔔</div>
-                <h3>No notifications yet</h3>
-                <p>Updates about reservations and announcements will appear here.</p>
-            </div>
+            {% if not notif_reservations and not feedback_notifications and not announcements and not (reservation_setting and reservation_setting.message) %}
+                <div class="notif-empty-state">
+                    <div class="notif-empty-icon">🔔</div>
+                    <h3>No notifications yet</h3>
+                    <p>Updates about reservations and announcements will appear here.</p>
+                </div>
             {% endif %}
 
         </div>
@@ -862,8 +1051,7 @@ document.getElementById('pickDate').addEventListener('change', function () {
 </div>
 
 <script>
-const NOTIF_READ_KEY = 'ccs_student_notifications_read';
-const NOTIF_SIGNATURE_KEY = 'ccs_student_notifications_signature';
+const NOTIF_READ_ITEMS_KEY = 'ccs_student_read_notification_items';
 
 function openNotifModal() {
     const modal = document.getElementById('notifModal');
@@ -881,12 +1069,91 @@ function closeNotifModal() {
     }
 }
 
-function getNotificationSignature() {
+/* IMPORTANT:
+   This follows your 1st logic.
+   It only uses data-notif-key so all pages match.
+*/
+function getNotificationText(item) {
+    return item.dataset.notifKey || '';
+}
+
+function getReadItems() {
+    try {
+        return JSON.parse(localStorage.getItem(NOTIF_READ_ITEMS_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveReadItems(items) {
+    localStorage.setItem(NOTIF_READ_ITEMS_KEY, JSON.stringify(items));
+}
+
+function updateUnreadUI() {
+    const readItems = getReadItems();
     const items = Array.from(document.querySelectorAll('.notif-item'));
 
-    return items.map(item => {
-        return item.innerText.trim().replace(/\s+/g, ' ');
-    }).join('|');
+    let unreadCount = 0;
+
+    items.forEach(item => {
+        const signature = getNotificationText(item);
+
+        if (!signature) {
+            return;
+        }
+
+        const isRead = readItems.includes(signature);
+
+        if (isRead) {
+            item.classList.remove('unread');
+
+            const dot = item.querySelector('.notif-dot');
+            if (dot) {
+                dot.remove();
+            }
+        } else {
+            item.classList.add('unread');
+
+            if (!item.querySelector('.notif-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'notif-dot';
+                item.appendChild(dot);
+            }
+
+            unreadCount++;
+        }
+    });
+
+    const navBadge = document.querySelector('.notif-alert-badge');
+
+    if (navBadge) {
+        navBadge.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    const notifCount = document.querySelector('.notif-count');
+
+    if (notifCount) {
+        notifCount.innerText = unreadCount;
+    }
+
+    const notifText = document.getElementById('notifHeaderText');
+
+    if (notifText) {
+        notifText.innerText = unreadCount > 0
+            ? 'You have unread notifications'
+            : 'All caught up!';
+    }
+}
+
+function markAllNotificationsRead() {
+    const items = Array.from(document.querySelectorAll('.notif-item'));
+
+    const signatures = items
+        .map(item => getNotificationText(item))
+        .filter(signature => signature !== '');
+
+    saveReadItems(signatures);
+    updateUnreadUI();
 }
 
 function getNotificationType(item) {
@@ -941,68 +1208,8 @@ function filterNotifications(type, button) {
     });
 }
 
-function applyNotificationsReadUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'none';
-    }
-
-    document.querySelectorAll('.notif-dot').forEach(dot => {
-        dot.remove();
-    });
-
-    document.querySelectorAll('.notif-item.unread').forEach(item => {
-        item.classList.remove('unread');
-    });
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'All caught up!';
-    }
-
-    const notifCount = document.querySelector('.notif-count');
-
-    if (notifCount) {
-        notifCount.innerText = '0';
-    }
-}
-
-function showUnreadBadgeUI() {
-    const navBadge = document.querySelector('.notif-alert-badge');
-
-    if (navBadge) {
-        navBadge.style.display = 'inline-flex';
-    }
-
-    const notifText = document.getElementById('notifHeaderText');
-
-    if (notifText) {
-        notifText.innerText = 'You have unread notifications';
-    }
-}
-
-function markAllNotificationsRead() {
-    const currentSignature = getNotificationSignature();
-
-    localStorage.setItem(NOTIF_READ_KEY, 'yes');
-    localStorage.setItem(NOTIF_SIGNATURE_KEY, currentSignature);
-
-    applyNotificationsReadUI();
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    const currentSignature = getNotificationSignature();
-    const savedSignature = localStorage.getItem(NOTIF_SIGNATURE_KEY);
-    const isMarkedRead = localStorage.getItem(NOTIF_READ_KEY) === 'yes';
-
-    if (isMarkedRead && savedSignature === currentSignature) {
-        applyNotificationsReadUI();
-    } else {
-        localStorage.removeItem(NOTIF_READ_KEY);
-        showUnreadBadgeUI();
-    }
+    updateUnreadUI();
 });
 
 window.addEventListener('click', function(e) {
@@ -1013,6 +1220,5 @@ window.addEventListener('click', function(e) {
     }
 });
 </script>
-
 </body>
 </html>

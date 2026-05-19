@@ -10,7 +10,7 @@ import io
 
 from flask import Response
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 
@@ -155,7 +155,30 @@ class LabStatus(db.Model):
         default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     )
 
+class ReservationSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    reservations_enabled = db.Column(db.Boolean, default=True)
 
+    message = db.Column(
+        db.String(255),
+        default='Reservations are currently enabled.'
+    )
+
+    updated_at = db.Column(
+        db.String(50),
+        default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+class LabSoftware(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    lab = db.Column(db.String(50), nullable=False)
+    software_name = db.Column(db.String(120), nullable=False)
+    version = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), default='Available')
+    created_at = db.Column(
+        db.String(50),
+        default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
 # ======================
 # DATABASE HELPERS
 # ======================
@@ -264,6 +287,37 @@ def ensure_leaderboard_columns():
     conn.commit()
     conn.close()
 
+def ensure_reservation_setting_columns():
+    db_path = _db_path()
+
+    if not os.path.exists(db_path):
+        return
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reservation_setting'")
+    table_exists = cursor.fetchone()
+
+    if not table_exists:
+        conn.close()
+        return
+
+    cursor.execute("PRAGMA table_info(reservation_setting)")
+    columns = [col[1] for col in cursor.fetchall()]
+
+    if 'message' not in columns:
+        cursor.execute(
+            "ALTER TABLE reservation_setting ADD COLUMN message TEXT DEFAULT 'Reservations are currently enabled.'"
+        )
+
+    if 'updated_at' not in columns:
+        cursor.execute(
+            "ALTER TABLE reservation_setting ADD COLUMN updated_at TEXT"
+        )
+
+    conn.commit()
+    conn.close()
 
 def ensure_pc_status_seed():
     for lab in LABS:
@@ -314,7 +368,26 @@ def get_lab_status(lab):
 
     return lab_status
 
+def get_reservation_setting():
+    setting = ReservationSetting.query.first()
 
+    if not setting:
+        setting = ReservationSetting(
+            reservations_enabled=True,
+            message='Reservations are currently enabled.'
+        )
+        db.session.add(setting)
+        db.session.commit()
+
+    if not setting.message:
+        if setting.reservations_enabled:
+            setting.message = 'Reservations are currently enabled. You may submit a reservation.'
+        else:
+            setting.message = 'Reservations are currently disabled by the admin. Please check again later.'
+
+        db.session.commit()
+
+    return setting
 
 def get_available_pc_numbers(lab, reservation_date, time_slot):
     reserved = get_reserved_pc_numbers(lab, reservation_date, time_slot)
@@ -334,7 +407,9 @@ def init_database():
         ensure_sitin_logout_columns()
         ensure_feedback_columns()
         ensure_leaderboard_columns()
+        ensure_reservation_setting_columns()
         ensure_pc_status_seed()
+        get_reservation_setting()
 
         students = Student.query.all()
         for student in students:
@@ -553,6 +628,8 @@ def dashboard():
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
+    reservation_setting = get_reservation_setting()
+
     return render_template(
         'dashboard.html',
         student=student,
@@ -564,9 +641,9 @@ def dashboard():
         logged_out_sitins=logged_out_sitins,
         feedback_submitted=feedback_submitted,
         total_hours=total_hours,
-        total_time_display=total_time_display
+        total_time_display=total_time_display,
+        reservation_setting=reservation_setting
     )
-
 # ======================
 # HISTORY
 # ======================
@@ -614,6 +691,8 @@ def history():
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
+    reservation_setting = get_reservation_setting()
+
     return render_template(
         'history.html',
         student=student,
@@ -625,7 +704,8 @@ def history():
         submitted_feedback_count=submitted_feedback_count,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        feedback_notifications=feedback_notifications
+        feedback_notifications=feedback_notifications,
+        reservation_setting=reservation_setting
     )
 
 # ======================
@@ -1029,15 +1109,17 @@ def reservation():
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
+    reservation_setting = get_reservation_setting()
+
     return render_template(
         'reservation.html',
         reservations=reservations,
         student=student,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        feedback_notifications=feedback_notifications
+        feedback_notifications=feedback_notifications,
+        reservation_setting=reservation_setting
     )
-
 
 @app.route('/submit_reservation', methods=['POST'])
 def submit_reservation():
@@ -1045,6 +1127,12 @@ def submit_reservation():
         return redirect(url_for('login'))
 
     student = Student.query.get_or_404(session['student_id'])
+
+    reservation_setting = get_reservation_setting()
+
+    if not reservation_setting.reservations_enabled:
+        flash('Reservations are currently disabled by the admin. Please check again later.', 'error')
+        return redirect(url_for('reservation'))
 
     reservation_date = request.form.get('date', '').strip()
     lab = request.form.get('lab', '').strip()
@@ -1181,6 +1269,11 @@ def admin_reservation():
     unavailable_labs = 0
     maintenance_pcs = PCStatus.query.filter_by(status='Maintenance').count()
 
+    reservation_setting = get_reservation_setting()
+
+    # Software list for the Software tab in admin_reservation.html
+    software_list = LabSoftware.query.order_by(LabSoftware.id.desc()).all()
+
     return render_template(
         'admin_reservation.html',
         reservations=reservations,
@@ -1189,9 +1282,31 @@ def admin_reservation():
         approved_reservations=approved_reservations,
         cancelled_reservations=cancelled_reservations,
         unavailable_labs=unavailable_labs,
-        maintenance_pcs=maintenance_pcs
+        maintenance_pcs=maintenance_pcs,
+        reservation_setting=reservation_setting,
+        software_list=software_list
     )
 
+@app.route('/admin/toggle_reservations', methods=['POST'])
+def toggle_reservations():
+    if 'admin_id' not in session:
+        return redirect(url_for('login'))
+
+    setting = get_reservation_setting()
+
+    setting.reservations_enabled = not setting.reservations_enabled
+    setting.updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if setting.reservations_enabled:
+        setting.message = 'Reservations are now enabled. You may now submit a reservation.'
+        flash('Reservations are now enabled. Students can reserve again.', 'success')
+    else:
+        setting.message = 'Reservations are currently disabled by the admin. Please check again later.'
+        flash('Reservations are now disabled. Students cannot reserve right now.', 'error')
+
+    db.session.commit()
+
+    return redirect(url_for('admin_reservation'))
 
 @app.route('/admin/approve_reservation/<int:reservation_id>', methods=['POST'])
 def approve_reservation(reservation_id):
@@ -1327,6 +1442,223 @@ def api_reservation_labs():
 
     return jsonify({'labs': labs_data})
 
+
+@app.route('/api/reservation/software')
+def get_reservation_lab_software():
+    if 'student_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    lab = request.args.get('lab', '').strip()
+
+    if not lab:
+        return jsonify({'error': 'Lab is required.'}), 400
+
+    software_items = LabSoftware.query.filter_by(
+        lab=lab
+    ).order_by(
+        LabSoftware.software_name.asc()
+    ).all()
+
+    software_list = []
+
+    for software in software_items:
+        software_list.append({
+            'id': software.id,
+            'software_name': software.software_name,
+            'version': software.version,
+            'status': software.status
+        })
+
+    return jsonify({
+        'lab': lab,
+        'software': software_list
+    })
+
+@app.route('/admin/software/add', methods=['POST'])
+def add_software():
+    if 'admin_id' not in session:
+        return redirect(url_for('login'))
+
+    lab = request.form.get('lab', '').strip()
+    software_name = request.form.get('software_name', '').strip()
+    version = request.form.get('version', '').strip()
+    status = request.form.get('status', 'Available').strip()
+
+    if not lab or not software_name or not version:
+        flash('Please complete all software fields.', 'error')
+        return redirect(url_for('admin_reservation'))
+
+    new_software = LabSoftware(
+        lab=lab,
+        software_name=software_name,
+        version=version,
+        status=status
+    )
+
+    db.session.add(new_software)
+    db.session.commit()
+
+    flash('Software added successfully.', 'success')
+    return redirect(url_for('admin_reservation'))
+
+@app.route('/admin/software/edit/<int:software_id>', methods=['POST'])
+def edit_software(software_id):
+    if 'admin_id' not in session:
+        return redirect(url_for('login'))
+
+    software = LabSoftware.query.get_or_404(software_id)
+
+    lab = request.form.get('lab', '').strip()
+    software_name = request.form.get('software_name', '').strip()
+    version = request.form.get('version', '').strip()
+    status = request.form.get('status', 'Available').strip()
+
+    if not lab or not software_name or not version:
+        flash('Please complete all software fields.', 'error')
+        return redirect(url_for('admin_reservation'))
+
+    if lab not in LABS:
+        flash('Invalid laboratory selected.', 'error')
+        return redirect(url_for('admin_reservation'))
+
+    if status not in ['Available', 'Needs Update', 'Unavailable']:
+        status = 'Available'
+
+    software.lab = lab
+    software.software_name = software_name
+    software.version = version
+    software.status = status
+
+    db.session.commit()
+
+    flash('Software updated successfully.', 'success')
+    return redirect(url_for('admin_reservation'))
+
+
+@app.route('/admin/software/delete/<int:software_id>', methods=['POST'])
+def delete_software(software_id):
+    if 'admin_id' not in session:
+        return redirect(url_for('login'))
+
+    software = LabSoftware.query.get_or_404(software_id)
+
+    db.session.delete(software)
+    db.session.commit()
+
+    flash('Software deleted successfully.', 'success')
+    return redirect(url_for('admin_reservation'))
+
+@app.route('/admin/software/import', methods=['POST'])
+def import_software():
+    if 'admin_id' not in session:
+        return redirect(url_for('login'))
+
+    file = request.files.get('software_file')
+
+    if not file or file.filename == '':
+        flash('Please choose a CSV or Excel file first.', 'error')
+        return redirect(url_for('admin_reservation'))
+
+    filename = secure_filename(file.filename)
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+    allowed_statuses = ['Available', 'Needs Update', 'Unavailable']
+    required_columns = ['lab', 'software_name', 'version', 'status']
+
+    rows = []
+
+    try:
+        # CSV IMPORT
+        if ext == 'csv':
+            stream = io.StringIO(file.stream.read().decode('utf-8-sig'), newline=None)
+            reader = csv.DictReader(stream)
+
+            if not reader.fieldnames:
+                flash('Your CSV file is empty or has no header row.', 'error')
+                return redirect(url_for('admin_reservation'))
+
+            headers = [h.strip().lower() for h in reader.fieldnames]
+
+            for col in required_columns:
+                if col not in headers:
+                    flash(f'Missing required column: {col}', 'error')
+                    return redirect(url_for('admin_reservation'))
+
+            for row in reader:
+                normalized = {}
+                for key, value in row.items():
+                    normalized[key.strip().lower()] = value.strip() if value else ''
+                rows.append(normalized)
+
+        # EXCEL IMPORT
+        elif ext == 'xlsx':
+            workbook = load_workbook(file, data_only=True)
+            sheet = workbook.active
+
+            header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
+            headers = [str(h).strip().lower() if h else '' for h in header_row]
+
+            for col in required_columns:
+                if col not in headers:
+                    flash(f'Missing required column: {col}', 'error')
+                    return redirect(url_for('admin_reservation'))
+
+            col_index = {header: index for index, header in enumerate(headers)}
+
+            for excel_row in sheet.iter_rows(min_row=2, values_only=True):
+                if not excel_row or all(cell is None or str(cell).strip() == '' for cell in excel_row):
+                    continue
+
+                rows.append({
+                    'lab': str(excel_row[col_index['lab']] or '').strip(),
+                    'software_name': str(excel_row[col_index['software_name']] or '').strip(),
+                    'version': str(excel_row[col_index['version']] or '').strip(),
+                    'status': str(excel_row[col_index['status']] or '').strip()
+                })
+
+        else:
+            flash('Invalid file type. Please upload .csv or .xlsx only.', 'error')
+            return redirect(url_for('admin_reservation'))
+
+        imported_count = 0
+        skipped_count = 0
+
+        for row in rows:
+            lab = row.get('lab', '').strip()
+            software_name = row.get('software_name', '').strip()
+            version = row.get('version', '').strip()
+            status = row.get('status', '').strip()
+
+            if not lab or not software_name or not version:
+                skipped_count += 1
+                continue
+
+            if lab not in LABS:
+                skipped_count += 1
+                continue
+
+            if status not in allowed_statuses:
+                status = 'Available'
+
+            software = LabSoftware(
+                lab=lab,
+                software_name=software_name,
+                version=version,
+                status=status
+            )
+
+            db.session.add(software)
+            imported_count += 1
+
+        db.session.commit()
+
+        flash(f'Software import complete. Imported: {imported_count}, Skipped: {skipped_count}.', 'success')
+        return redirect(url_for('admin_reservation'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Import failed: {str(e)}', 'error')
+        return redirect(url_for('admin_reservation'))
 
 @app.route('/api/reservation/time-slots')
 def api_reservation_time_slots():
@@ -1676,6 +2008,8 @@ def edit_profile():
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
+    reservation_setting = get_reservation_setting()
+
     if request.method == 'POST':
         student.first_name = request.form.get('first_name')
         student.last_name = request.form.get('last_name')
@@ -1694,7 +2028,8 @@ def edit_profile():
                     student=student,
                     announcements=announcements,
                     notif_reservations=notif_reservations,
-                    feedback_notifications=feedback_notifications
+                    feedback_notifications=feedback_notifications,
+                    reservation_setting=reservation_setting
                 )
 
             if len(new_password) < 6:
@@ -1704,7 +2039,8 @@ def edit_profile():
                     student=student,
                     announcements=announcements,
                     notif_reservations=notif_reservations,
-                    feedback_notifications=feedback_notifications
+                    feedback_notifications=feedback_notifications,
+                    reservation_setting=reservation_setting
                 )
 
             student.password = generate_password_hash(new_password)
@@ -1733,9 +2069,9 @@ def edit_profile():
         student=student,
         announcements=announcements,
         notif_reservations=notif_reservations,
-        feedback_notifications=feedback_notifications
+        feedback_notifications=feedback_notifications,
+        reservation_setting=reservation_setting
     )
-
 # ======================
 # FORGOT PASSWORD
 # ======================
