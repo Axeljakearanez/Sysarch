@@ -1,1 +1,5 @@
-
+Flask
+Flask-SQLAlchemy
+Werkzeug
+openpyxl
+gunicorn
