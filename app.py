@@ -625,6 +625,45 @@ def dashboard():
     else:
         total_time_display = f"{minutes}m"
 
+    # ── Average session duration & longest session ──────────────────────
+    def format_duration(mins):
+        h, m = divmod(mins, 60)
+        if h > 0 and m > 0:
+            return f"{h}h {m}m"
+        elif h > 0:
+            return f"{h}h"
+        else:
+            return f"{m}m"
+
+    completed_records = [
+        r for r in records
+        if r.status == 'Logged Out'
+        and r.login_time
+        and r.logout_time
+    ]
+
+    session_durations = []
+    for r in completed_records:
+        try:
+            login_dt  = datetime.strptime(r.login_time,  '%Y-%m-%d %H:%M:%S')
+            logout_dt = datetime.strptime(r.logout_time, '%Y-%m-%d %H:%M:%S')
+            duration_minutes = int((logout_dt - login_dt).total_seconds() // 60)
+            if duration_minutes >= 0:
+                session_durations.append(duration_minutes)
+        except Exception:
+            pass
+
+    if session_durations:
+        avg_minutes     = int(sum(session_durations) / len(session_durations))
+        longest_minutes = max(session_durations)
+    else:
+        avg_minutes     = 0
+        longest_minutes = 0
+
+    avg_session_display     = format_duration(avg_minutes)
+    longest_session_display = format_duration(longest_minutes)
+    # ────────────────────────────────────────────────────────────────────
+
     announcements, notif_reservations, feedback_notifications = \
         get_student_notification_data(student)
 
@@ -642,6 +681,8 @@ def dashboard():
         feedback_submitted=feedback_submitted,
         total_hours=total_hours,
         total_time_display=total_time_display,
+        avg_session_display=avg_session_display,
+        longest_session_display=longest_session_display,
         reservation_setting=reservation_setting
     )
 # ======================
@@ -2377,4 +2418,4 @@ def get_student_notification_data(student):
 init_database()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=1122)
