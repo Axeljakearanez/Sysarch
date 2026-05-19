@@ -9155,10 +9155,9 @@ body.dark .rsv-lab-status.closed {
 .student-summary-grid {
     padding: 24px;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
-
 .student-summary-card {
     background: linear-gradient(180deg, #ffffff, #faf8ff);
     border: 1px solid #e8defb;
@@ -9258,13 +9257,13 @@ body.dark .student-summary-card h3 {
     color: #ffffff;
 }
 
-@media (max-width: 1300px) {
+@media (max-width: 1100px) {
     .student-summary-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 750px) {
+@media (max-width: 600px) {
     .student-summary-grid {
         grid-template-columns: 1fr;
     }
